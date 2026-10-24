@@ -1,0 +1,161 @@
+---
+title: "Running a complete workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Running a complete workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
+```
+
+## Overview
+
+`run_workflow()` chains the data, preprocessing, selection, modelling,
+evaluation, and result layers into one object. The held-out validation and
+test sets are transformed with parameters learned from the training set; they
+are never used to fit preprocessing, selection, calibration, or thresholds.
+
+## Build and configure the specification
+
+```{r specification}
+library(uniml)
+
+development <- read.csv(
+  system.file("extdata", "uniml-cvd-mortality.csv", package = "uniml")
+)
+new_admissions <- read.csv(
+  system.file("extdata", "uniml-cvd-mortality-new.csv", package = "uniml")
+)
+
+spec <- uniml_spec(
+  task_type = "binary",
+  outcome = "died",
+  positive = "yes",
+  id = "id"
+)
+spec <- set_preprocess(
+  spec,
+  impute = "median_mode",
+  scale = "zscore",
+  encode = "onehot"
+)
+spec <- set_feature_selection(
+  spec,
+  methods = c("univariate", "lasso"),
+  combine = "intersect"
+)
+spec <- set_learners(spec, c("lr", "cart"), tune = FALSE)
+spec <- set_tuning(spec, folds = 3, evals = 5, metric = "auc")
+spec <- set_evaluation(
+  spec,
+  ci = "bootstrap",
+  threshold_method = "youden",
+  calibration = "platt",
+  select_on = "validation"
+)
+spec
+```
+
+The built-in learner keys are `lr`, `rf`, `xgb`, `lgb`, `nnet`, `knn`, `cart`,
+and `nb`. Any installed mlr3 classification learner can also be passed directly,
+such as `classif.log_reg`, `classif.svm`, or `classif.lda`. External learners
+use their mlr3 defaults unless a custom search space is registered.
+
+## Create leakage-safe splits
+
+`make_split()` returns a `uniml_split` whose elements are `uniml_data`
+objects. Pass the `$data` component to `run_workflow()`. The independent
+new-admission cohort stays outside the development split.
+
+```{r split}
+split <- make_split(
+  as_uniml_data(development, spec),
+  prop = c(0.8, 0.2),
+  stratify = TRUE,
+  seed = 123
+)
+
+names(split)
+nrow(split$train$data)
+nrow(split$validation$data)
+nrow(new_admissions)
+```
+
+## Run the workflow
+
+```{r workflow}
+result <- run_workflow(
+  spec,
+  train = split$train$data,
+  validation = split$validation$data,
+  test = new_admissions,
+  ci_R = 200
+)
+
+result
+summary(result)
+```
+
+The result stores the fitted preprocessor, selection details, tuning
+records, cross-validation output, metrics with confidence intervals,
+predictions, thresholds, and the model ranking. Useful components include:
+
+```{r inspect-results}
+result$metrics
+result$ci
+result$ranking
+result$models
+result$selection$selected_features
+```
+
+The comparison set is controlled by `set_evaluation(select_on = ...)` and
+`rank_models(select_on = ...)`. With `"auto"`, the test set is used when
+available; otherwise validation is used. For external validation, set
+`select_on = "validation"` so model selection is not optimised on the new
+admission cohort.
+
+## Predict new data
+
+`predict_uniml()` reuses the stored preprocessing, selected feature mapping,
+calibration, threshold, and fitted learner. It does not refit anything.
+
+```{r predict}
+predicted <- predict_uniml(
+  result,
+  newdata = new_admissions,
+  model = "best"
+)
+head(predicted)
+```
+
+The `newdata` argument may omit the outcome column. In that case the returned
+data frame contains predicted probabilities and classes without a truth
+column.
+
+## Leakage policies
+
+The default is a transparent custom policy. It can be changed explicitly:
+
+```{r leakage}
+spec_in <- set_leakage_policy(
+  spec,
+  mode = "strict_in",
+  in_cv = c("selection", "balance", "tuning")
+)
+
+spec_out <- set_leakage_policy(spec, mode = "strict_out")
+```
+
+`strict_in` repeats configured steps inside each cross-validation fold.
+`strict_out` keeps those steps outside the fold loop. The validation and test
+sets remain held out in both cases.
+
+## Export results
+
+After inspecting the result, data tables and figures can be written with
+`export_results()`. The workflow result is also the input to the
+performance and SHAP plotting functions.
+

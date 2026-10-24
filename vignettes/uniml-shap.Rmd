@@ -1,0 +1,137 @@
+---
+title: "SHAP interpretation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{SHAP interpretation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
+```
+
+## Overview
+
+The SHAP layer works with a fitted `uniml_result` or directly with trained
+mlr3 learners. It returns both standardized model input and optional raw
+feature values, so the same explanation can be plotted on the scale used by
+the model or on a more interpretable display scale.
+
+This vignette assumes that `kernelshap` and `shapviz` are installed, and that
+`result` was produced by `run_workflow()`. Optional native SHAP paths for
+XGBoost and LightGBM require the corresponding learner packages.
+
+## Fit a workflow
+
+```{r fit-workflow}
+library(uniml)
+
+data <- read.csv(
+  system.file("extdata", "uniml-example.csv", package = "uniml")
+)
+data$outcome <- factor(data$outcome, levels = c("no", "yes"))
+
+spec <- uniml_spec(
+  task_type = "binary",
+  outcome = "outcome",
+  positive = "yes",
+  id = "id"
+)
+spec <- set_preprocess(
+  spec,
+  impute = "median_mode",
+  scale = "zscore",
+  encode = "onehot"
+)
+spec <- set_feature_selection(spec, methods = "univariate")
+spec <- set_learners(spec, c("lr", "cart"), tune = FALSE)
+spec <- set_evaluation(spec, ci = "none", calibration = "none")
+
+split <- make_split(
+  as_uniml_data(data, spec),
+  prop = c(0.6, 0.4),
+  stratify = TRUE,
+  seed = 123
+)
+result <- run_workflow(
+  spec,
+  train = split$train$data,
+  validation = split$validation$data
+)
+```
+
+## Compute SHAP values
+
+The model sees the processed feature matrix. `explain_shap()` can use that
+matrix as `data`; `raw_data` is optional and must contain the same feature
+names on the display scale.
+
+```{r explain}
+shap_data <- result$preprocess$train
+result <- explain_shap(
+  result,
+  data = shap_data,
+  n_explain = 100,
+  seed = 123,
+  positive = "yes"
+)
+
+result$shap
+result$shap$importance
+```
+
+For multiple models, use `model = "best"`, `"all"`, or a model name in the
+plotting calls. A direct learner can also be explained:
+
+```{r direct-learner}
+learner <- result$models[[1]]$learner
+explanation <- explain_shap(
+  learner,
+  data = shap_data,
+  n_explain = 100,
+  seed = 123,
+  positive = "yes"
+)
+```
+
+## Importance, beeswarm, dependence, and interaction
+
+```{r shap-plots}
+plot_shap_importance(result, model = "best")
+plot_shap_beeswarm(result, model = "best")
+plot_shap_dependence(result, feature = "age", model = "best")
+plot_shap_interaction(result, model = "best")
+```
+
+The importance plot ranks features by mean absolute SHAP value. The beeswarm
+shows the distribution and direction of individual contributions. The
+dependence plot shows the relationship between a feature and its SHAP value;
+supply `color_by` to inspect a possible interaction. The interaction plot uses
+the SHAP interaction values produced by `shapviz::sv_interaction()`.
+
+All four plots are also available through `plot(result, type = ...)`.
+
+## Clinical thresholds
+
+For a continuous feature, `extract_thresholds()` fits a smoothed SHAP curve
+and reports zero crossings, optional interaction strata, and a paper-ready
+summary table.
+
+```{r thresholds}
+thresholds <- extract_thresholds(
+  result$shap,
+  target = "age",
+  interaction = "bmi",
+  min_n = 20,
+  min_unique = 8
+)
+
+thresholds$zero_crossings
+thresholds$paper_ready
+```
+
+The threshold search is descriptive. It should be reviewed against the
+biological or clinical context and validated in an independent sample before
+being used as a decision rule.
+

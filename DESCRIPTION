@@ -1,0 +1,71 @@
+Package: uniml
+Type: Package
+Title: Unified Predictive Modeling Toolkit
+Version: 0.0.0.9000
+Authors@R:
+    person("Steve", "Shi", email = "19943405117@163.com", role = c("aut", "cre"))
+Author: Steve Shi [aut, cre]
+Maintainer: Steve Shi <19943405117@163.com>
+Description: A unified toolkit for predictive modeling covering preprocessing,
+    feature selection, model training and tuning, evaluation, visualization,
+    and SHAP interpretability, with an extensible task-type architecture.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1)
+Imports:
+    mlr3,
+    mlr3learners,
+    mlr3pipelines,
+    mlr3filters,
+    mlr3fselect,
+    mlr3tuning,
+    mlr3measures,
+    paradox,
+    mlr3misc,
+    future,
+    future.apply,
+    data.table,
+    ggplot2,
+    pROC,
+    glmnet,
+    Boruta,
+    ranger,
+    mice,
+    shapviz,
+    kernelshap
+Suggests:
+    mlr3mbo (>= 1.0.0),
+    DiceKriging,
+    mlr3extralearners,
+    missRanger,
+    missForest,
+    xgboost,
+    lightgbm,
+    e1071,
+    randomForest,
+    gbm,
+    kknn,
+    nnet,
+    rpart,
+    PRROC,
+    ResourceSelection,
+    dcurves,
+    smotefamily,
+    ROSE,
+    correlation,
+    car,
+    ggsci,
+    patchwork,
+    igraph,
+    ggraph,
+    ggpubr,
+    haven,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
+VignetteBuilder: knitr

@@ -40,9 +40,12 @@ test_that("default task types are registered", {
   expect_true(binary$supports_calibration)
 
   expect_true("binary" %in% list_task_types(implemented_only = TRUE))
-  expect_false("multiclass" %in% list_task_types(implemented_only = TRUE))
+  expect_true("multiclass" %in% list_task_types(implemented_only = TRUE))
   expect_false("survival" %in% list_task_types(implemented_only = TRUE))
-  expect_false(get_task_type("multiclass")$implemented)
+  expect_true(get_task_type("multiclass")$implemented)
+  expect_false(get_task_type("multiclass")$positive)
+  expect_false(get_task_type("multiclass")$supports_dca)
+  expect_false(get_task_type("multiclass")$supports_calibration)
   expect_false(get_task_type("survival")$implemented)
 
   expect_error(get_task_type("nope"), "Unknown task type")
@@ -51,10 +54,16 @@ test_that("default task types are registered", {
 })
 
 test_that("registered task types drive spec validation", {
+  # Multiclass is implemented but has no positive class, so one is rejected.
   expect_error(
     uniml_spec(task_type = "multiclass", outcome = "y", positive = "Yes"),
-    "task_type"
+    "must be NULL"
   )
+  expect_s3_class(
+    uniml_spec(task_type = "multiclass", outcome = "y"),
+    "uniml_spec"
+  )
+  # Survival is registered but not implemented, so it is not a valid choice.
   expect_error(
     uniml_spec(task_type = "survival", outcome = "y", positive = "Yes"),
     "task_type"

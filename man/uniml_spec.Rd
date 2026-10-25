@@ -7,7 +7,7 @@
 uniml_spec(
   task_type,
   outcome,
-  positive,
+  positive = NULL,
   id = NULL,
   exclude = NULL,
   labels = NULL,
@@ -19,7 +19,8 @@ uniml_spec(
 
 \item{outcome}{Outcome column name.}
 
-\item{positive}{Positive outcome class. Required.}
+\item{positive}{Positive outcome class. Required for a binary task and must be
+\code{NULL} for a task type without a positive class, such as \code{"multiclass"}.}
 
 \item{id}{Optional ID column name.}
 

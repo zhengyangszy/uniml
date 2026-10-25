@@ -4,9 +4,9 @@
 
 [![R-CMD-check](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml)
 
-`uniml` 是一个面向**二分类预测模型**的统一建模工具包。它把数据切分、缺失值填补、
-特征筛选、模型训练与调参、性能评价、可视化、SHAP 可解释性串成一条流水线，同时强制
-区分「用来拟合模型的数据」和「用来评价模型的数据」，避免信息泄漏。
+`uniml` 是一个面向**二分类与多分类预测模型**的统一建模工具包。它把数据切分、缺失值
+填补、特征筛选、模型训练与调参、性能评价、可视化、SHAP 可解释性串成一条流水线，同时
+强制区分「用来拟合模型的数据」和「用来评价模型的数据」，避免信息泄漏。
 
 整个包按层组织（L0–L9）：每一层都能单独使用，`run_workflow()` 把它们串起来。
 
@@ -48,8 +48,13 @@ Hosmer–Lemeshow 检验、NRI/IDI、决策曲线、多重插补的 Rubin 池化
 
 ## 适用范围与限制
 
-- **只支持二分类。** `multiclass` 和 `survival` 只注册了任务类型、把架构占位留出来，
-  调用会直接报 "not implemented"。
+- **两种任务类型：二分类与多分类。** `run_workflow()` **只支持二分类**：它的预测表、
+  阈值、校准器、事后检验都建立在「单个概率列」上，所以多分类规格会直接报错并指向
+  `vignette("uniml-multiclass")`。多分类在**逐层使用**的意义上完整可用——规格、数据、
+  任务、学习器、调参、指标、绘图都支持。
+- **部分二分类方法没有多分类对应物。** 校准、决策曲线、NRI/IDI、DeLong、
+  Hosmer–Lemeshow 都需要一个阳性类；多分类下明确拒绝，而不是替你选一个约定。
+- **生存分析不在本包范围内。** 它是独立包（数据模型不同：时间 + 状态 + 删失）。
 - **示例数据是模拟的。** `inst/extdata` 两个文件都由
   `data-raw/simulate-cvd-mortality.R` 生成，6.5% 的事件率是模拟参数。它们的作用是让
   示例可运行、可复现；**不是真实患者队列**，在它们身上算出来的数字不能说明临床性能，
@@ -298,13 +303,16 @@ table(checklist$status)
   的公开队列）跑完整流程。演示 `gos6` 必须排除（它是结局的原始五分类）、bootstrap
   分布退化时比值的区间给 `NA` 而不是编数、以及 Hosmer–Lemeshow 统计量无法定义时
   返回 `not_estimable` 而不是 `NaN`。
+- `vignette("uniml-multiclass")`：**多分类**——指标约定、k×k 混淆矩阵、一对多 ROC，
+  以及哪些方法在多分类下刻意没有实现、为什么。
 
 ## 开发状态
 
-`uniml` 当前版本 `0.1.0`，只实现了二分类任务类型。GitHub Actions 在 Windows、
-macOS、Linux 三平台做 `R CMD check`；
-`tests/testthat/test-consistency.R` 把指标层钉在独立实现上（`mlr3measures`、`pROC`、
-`PRROC`、`stats::glm()`、`stats::isoreg()`、`ResourceSelection`）。变更见 `NEWS.md`。
+`uniml` 当前版本 `0.2.0`，实现了二分类与多分类任务类型（`survival` 仍是占位）。
+GitHub Actions 在 Windows、macOS、Linux 三平台做 `R CMD check`；
+`tests/testthat/test-consistency.R` 把二分类指标层钉在独立实现上（`mlr3measures`、
+`pROC`、`PRROC`、`stats::glm()`、`stats::isoreg()`、`ResourceSelection`），
+`test-multiclass.R` 把多分类指标钉在 `mlr3measures` 与手算上。变更见 `NEWS.md`。
 
 ## 许可
 

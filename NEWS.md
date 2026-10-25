@@ -1,3 +1,38 @@
+# uniml 0.2.0
+
+Multiclass outcomes are now a supported task type. They are modelled at the
+layer level; the full workflow is still binary-only and says so.
+
+## Multiclass
+
+* `uniml_spec(task_type = "multiclass", outcome = "y")` no longer needs a
+  `positive` class, and passing one is an error: a positive class only exists
+  when the outcome has two levels.
+* `as_uniml_data()` accepts three or more classes, keeps all of them, and sorts
+  the levels so the class order is the same on every machine.
+* `make_task()` builds a `TaskClassif` with no positive class.
+* `calc_metrics()` gains a multiclass method (and switches to it automatically
+  for an mlr3 prediction with more than two probability columns). It reports
+  macro one-vs-rest AUC (`mlr3measures::mauc_au1u`), accuracy, balanced accuracy,
+  Cohen's kappa, log loss, the multi-class Brier score, macro one-vs-rest
+  sensitivity/specificity/PPV/NPV/F1, the k-by-k confusion table, and a per-class
+  table. Each of those conventions is pinned by a test against `mlr3measures`
+  and a direct recomputation.
+* New `as_uniml_multiclass()` converts an mlr3 `PredictionClassif` or a
+  probability matrix into the object the multiclass helpers accept.
+* `plot_roc()` draws one-vs-rest ROC curves, one per class, and
+  `plot_confusion()` draws a k-by-k table with the accuracy as the subtitle.
+* `tune_model()` chooses a measure that exists for the task: `auc` maps to
+  `classif.mauc_au1u` and `brier` to `classif.mbrier` on a multiclass task, and
+  two-class-only measures such as `pr_auc` are refused instead of silently
+  mistranslated.
+* Calibration, decision curves, NRI/IDI, DeLong, and Hosmer-Lemeshow stay
+  binary-only, and `plot_calibration()` and `plot_dca()` say why when handed a
+  multiclass prediction.
+* `run_workflow()` stops with a message pointing at `vignette("uniml-multiclass")`
+  instead of half-running: its prediction table, thresholds, calibrators, and
+  post-model tests all assume a single probability column.
+
 # uniml 0.1.0
 
 First release. The binary-classification stack is implemented end to end;

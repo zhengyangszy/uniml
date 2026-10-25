@@ -197,6 +197,12 @@ list_task_types <- function(implemented_only = FALSE) {
   ))
 }
 
+# A binary task needs one class named as positive; task types with unordered
+# ordinal outcomes (multiclass today, survival later) do not.
+.task_type_requires_positive <- function(task_type) {
+  isTRUE(get_task_type(task_type)$positive)
+}
+
 #' Calculate performance metrics
 #'
 #' S3 generic that dispatches metric calculation by task type. Method bodies
@@ -506,7 +512,15 @@ plot_shap_force.default <- function(x, ...) {
     mlr3_task = "classif",
     outcome_class = "factor",
     positive = FALSE,
-    implemented = FALSE
+    metrics = c(
+      "auc", "accuracy", "balanced_accuracy", "kappa", "logloss", "brier",
+      "sensitivity", "specificity", "ppv", "npv", "f1"
+    ),
+    default_learners = c("lr", "rf", "xgb", "nnet", "knn", "cart", "nb"),
+    supports_shap = TRUE,
+    supports_dca = FALSE,
+    supports_calibration = FALSE,
+    implemented = TRUE
   ))
 
   register_task_type(task_type_spec(

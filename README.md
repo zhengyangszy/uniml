@@ -4,11 +4,11 @@
 
 [![R-CMD-check](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml)
 
-`uniml` is a unified predictive modeling toolkit for binary classification. It
-chains preprocessing, feature selection, model training and tuning, evaluation,
-visualization, and SHAP interpretability behind one small set of objects, while
-keeping a strict separation between the data that fits a model and the data
-that judges it.
+`uniml` is a unified predictive modeling toolkit for binary and multiclass
+classification. It chains preprocessing, feature selection, model training and
+tuning, evaluation, visualization, and SHAP interpretability behind one small set
+of objects, while keeping a strict separation between the data that fits a model
+and the data that judges it.
 
 The package is organized as a stack of layers. Every layer can be used on its
 own, and `run_workflow()` wires them together.
@@ -58,9 +58,16 @@ is not it yet.
 
 ## Scope and limitations
 
-- **Binary classification only.** `multiclass` and `survival` are registered as
-  task types so the architecture is visible, but they raise a "not implemented"
-  error.
+- **Two task types: binary and multiclass.** `run_workflow()` is binary-only: its
+  prediction table, thresholds, calibrators, and post-model tests assume a single
+  probability column, so a multiclass specification stops with a message pointing
+  at `vignette("uniml-multiclass")`. Multiclass is supported at the layer level —
+  specification, data, task, learners, tuning, metrics, and plots.
+- **Some binary methods have no multiclass counterpart.** Calibration, decision
+  curves, NRI/IDI, DeLong, and Hosmer-Lemeshow need one positive class. They are
+  refused for multiclass rather than silently given a convention.
+- **Survival is out of scope.** It is a separate package with its own data model
+  (time and status, censoring) and is not implemented here.
 - **The example cohorts are synthetic.** Both files in `inst/extdata` come from
   `data-raw/simulate-cvd-mortality.R`, and the 6.5% target event rate is a
   simulation parameter. They make the examples runnable and reproducible. They
@@ -391,6 +398,7 @@ vignette("uniml-atomic", package = "uniml")
 vignette("uniml-workflow", package = "uniml")
 vignette("uniml-shap", package = "uniml")
 vignette("uniml-realdata", package = "uniml")
+vignette("uniml-multiclass", package = "uniml")
 ```
 
 `uniml-realdata` runs the whole workflow on `pROC::aSAH`, a published cohort of
@@ -400,10 +408,14 @@ has to be excluded; ratios whose bootstrap distribution is degenerate come back
 as `NA` with a reason; and a Hosmer-Lemeshow statistic that cannot be defined
 says so instead of returning `NaN`.
 
+`uniml-multiclass` covers the three-class path: the metric conventions, the k-by-k
+confusion table, one-vs-rest ROC curves, and the methods that are deliberately
+not implemented for more than two classes.
+
 ## Development status
 
-`uniml` is at version `0.1.0`. The binary task type is implemented;
-`multiclass` and `survival` are registered as placeholders only. GitHub Actions
+`uniml` is at version `0.2.0`. The binary and multiclass task types are
+implemented; `survival` is registered as a placeholder only. GitHub Actions
 checks the package on Windows, macOS, and Linux, and
 `tests/testthat/test-consistency.R` pins the metric layer to independent
 implementations (`mlr3measures`, `pROC`, `PRROC`, `stats::glm()`,

@@ -1919,6 +1919,17 @@ run_workflow <- function(spec, train, validation, test = NULL,
                          external = NULL, ci_R = 1000) {
   validate_uniml_spec(spec)
   .assert_scalar_number(ci_R, "ci_R", integer = TRUE, min = 1)
+  if (!identical(spec$task_type, "binary")) {
+    .abort(sprintf(
+      paste(
+        "`run_workflow()` currently supports the \"binary\" task type only;",
+        "%s tasks are modelled layer by layer for now.",
+        "Use `as_uniml_data()`, `make_task()`, `train_model()`, `tune_model()`,",
+        "and `calc_metrics()` directly, or see `vignette(\"uniml-multiclass\")`."
+      ),
+      spec$task_type
+    ))
+  }
   strategy <- spec$output$future_strategy
   if (identical(strategy, "sequential")) {
     future::plan(future::sequential)

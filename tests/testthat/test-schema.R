@@ -112,9 +112,10 @@ test_that("uniml_spec() rejects invalid arguments", {
   expect_error(uniml_spec(task_type = "binary", positive = "Yes"), "outcome")
   expect_error(uniml_spec(task_type = "binary", outcome = "y"), "positive")
   expect_error(uniml_spec(outcome = "y", positive = "Yes"), "task_type")
+  # A positive class belongs to binary outcomes only.
   expect_error(
     uniml_spec(task_type = "multiclass", outcome = "y", positive = "Yes"),
-    "task_type"
+    "must be NULL"
   )
   expect_error(
     uniml_spec(task_type = "binary", outcome = "y", positive = NA_character_),

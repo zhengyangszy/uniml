@@ -1,14 +1,40 @@
 # L4 model tuning -----------------------------------------------------------
 
-.tuning_measure_for <- function(metric) {
+.tuning_measure_for <- function(metric, n_classes = 2L) {
+  multiclass <- as.integer(n_classes) > 2L
   if (inherits(metric, "Measure")) {
     if (!identical(metric$task_type, "classif")) {
       .abort("`metric` must be a classification measure.")
+    }
+    if (multiclass && "twoclass" %in% metric$properties) {
+      .abort(sprintf(
+        "The measure \"%s\" is defined for two-class outcomes only; pass a multiclass measure instead.",
+        metric$id
+      ))
     }
     return(metric$clone())
   }
 
   .assert_scalar_character(metric, "metric")
+  if (multiclass) {
+    # mlr3 marks most classification measures as "twoclass"; only these have a
+    # multiclass definition, and the names match the ones `calc_metrics()` uses.
+    return(switch(
+      metric,
+      auc = mlr3::msr("classif.mauc_au1u"),
+      brier = mlr3::msr("classif.mbrier"),
+      logloss = mlr3::msr("classif.logloss"),
+      accuracy = mlr3::msr("classif.acc"),
+      balanced_accuracy = mlr3::msr("classif.bacc"),
+      .abort(sprintf(
+        paste(
+          "Tuning metric \"%s\" is not defined for multiclass outcomes.",
+          "Use one of: auc, brier, logloss, accuracy, balanced_accuracy."
+        ),
+        metric
+      ))
+    ))
+  }
   switch(
     metric,
     auc = mlr3::msr("classif.auc"),
@@ -209,7 +235,10 @@ tune_model <- function(task, learner_spec, resampling = NULL,
     seed = seed
   )
   resampling <- inputs$resampling
-  measure <- .tuning_measure_for(.learner_tuning_metric(learner_spec))
+  measure <- .tuning_measure_for(
+    .learner_tuning_metric(learner_spec),
+    n_classes = length(task$class_names)
+  )
   search_space <- .tuning_search_space_for(learner_spec, task)
   tuner_obj <- .tuning_tuner_for(tuner)
   terminator_obj <- .tuning_terminator_for(terminator)

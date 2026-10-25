@@ -597,7 +597,9 @@ make_task <- function(data, spec) {
     if (!identical(task$target_names, spec$outcome)) {
       .abort("`spec$outcome` does not match the target name in `task`.")
     }
-    if (!identical(task$positive, as.character(spec$positive))) {
+    expected_positive <- if (is.null(spec$positive)) NA_character_ else as.character(spec$positive)
+    observed_positive <- if (length(task$positive) == 0L) NA_character_ else as.character(task$positive)
+    if (!identical(observed_positive, expected_positive)) {
       .abort("`spec$positive` does not match the positive class in `task`.")
     }
     return(task)
@@ -638,7 +640,9 @@ make_task <- function(data, spec) {
   task <- mlr3::as_task_classif(
     task_data,
     target = spec$outcome,
-    positive = as.character(spec$positive)
+    # A multiclass task has no positive class; passing character(0) here makes
+    # mlr3 treat the outcome as binary.
+    positive = if (is.null(spec$positive)) NULL else as.character(spec$positive)
   )
   task$id <- "uniml_task"
   task

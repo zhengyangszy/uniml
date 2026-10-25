@@ -1,0 +1,198 @@
+---
+title: "Multiclass outcomes"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Multiclass outcomes}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 110
+)
+```
+
+## What "multiclass" means here
+
+A multiclass task predicts one of three or more classes that carry no order.
+`uniml` treats it as a separate task type rather than as a binary problem with a
+positive class bolted on, because almost every binary report is built around a
+single event: a threshold, a positive class, a calibration curve, a decision
+curve. None of those survives contact with four unordered classes without a
+statement of convention.
+
+What the package fixes for you is the convention:
+
+| Quantity | Definition |
+| --- | --- |
+| `auc` | Macro one-vs-rest AUC, every class weighted equally (`mlr3measures::mauc_au1u`) |
+| `brier` | Multi-class Brier score: mean over rows of the summed squared class errors |
+| `logloss` | Mean negative log probability of the observed class |
+| `sensitivity`, `specificity`, `ppv`, `npv`, `f1` | Macro averages of the one-vs-rest values |
+| `balanced_accuracy` | Mean per-class recall, which equals the macro sensitivity |
+| `kappa` | Cohen's kappa on the k-by-k table |
+
+Every number is reproducible from the confusion matrix that comes with it, and
+`tests/testthat/test-multiclass.R` pins them to `mlr3measures` and to a direct
+recomputation.
+
+## A worked example
+
+`datasets::iris` is used here because it ships with R and has three classes; the
+mechanics are the same for a clinical outcome with three risk groups.
+
+```{r data}
+library(uniml)
+
+data <- iris
+data$Species <- factor(data$Species)
+table(data$Species)
+
+spec <- uniml_spec(
+  task_type = "multiclass",
+  outcome = "Species"
+)
+spec <- set_learners(spec, c("cart", "rf"), tune = TRUE)
+spec
+```
+
+Note there is no `positive`: a positive class only exists when there are two.
+
+```{r task}
+prepared <- as_uniml_data(data, spec)
+levels(prepared$outcome)
+
+task <- make_task(data, spec)
+task$class_names
+task$positive
+```
+
+## Train and score
+
+```{r train}
+learner <- train_model(
+  task,
+  mlr3::lrn("classif.rpart", predict_type = "prob")
+)
+prediction <- learner$predict(task)
+head(prediction$prob, 3)
+```
+
+`calc_metrics()` recognises a prediction with more than two probability columns
+and switches to the multiclass metric set:
+
+```{r metrics}
+metrics <- calc_metrics(prediction)
+metrics[setdiff(names(metrics), c("confusion", "per_class"))]
+```
+
+The confusion matrix has the reference classes in rows and the predicted classes
+in columns, and the per-class table turns it into one-vs-rest rates:
+
+```{r confusion}
+metrics$confusion
+metrics$per_class
+```
+
+The macro sensitivity and the balanced accuracy are the same quantity computed
+two ways, which is a useful check rather than a duplication:
+
+```{r macro}
+data.frame(
+  sensitivity = metrics$sensitivity,
+  balanced_accuracy = metrics$balanced_accuracy,
+  accuracy = metrics$accuracy,
+  kappa = metrics$kappa
+)
+```
+
+## Does a model survive resampling?
+
+Nothing here is special-cased for the workflow, so ordinary mlr3 resampling
+applies; `calc_metrics()` scores the pooled out-of-fold predictions.
+
+```{r cv}
+resampling <- mlr3::rsmp("cv", folds = 5L)
+resampling$instantiate(task)
+cv <- mlr3::resample(task, learner, resampling, store_models = FALSE)
+
+pooled <- as_uniml_multiclass(cv$prediction(), truth = cv$prediction()$truth)
+cv_metrics <- calc_metrics(pooled)
+round(cv_metrics$auc, 3)
+round(cv_metrics$accuracy, 3)
+```
+
+Tuning works the same way as for a binary task, because the search space and the
+resampling are mlr3 objects. `resolve_learners()` returns the package's learner
+specifications, which carry their search spaces:
+
+```{r tune}
+learners <- resolve_learners(spec, task = task)
+tuned <- tune_model(
+  task,
+  learners[["cart"]],
+  resampling = mlr3::rsmp("cv", folds = 3L),
+  tuner = "random_search",
+  terminator = mlr3tuning::trm("evals", n_evals = 4L),
+  seed = 123
+)
+tuned$status
+tuned$best_params
+```
+
+## Figures
+
+Discrimination is shown as one-vs-rest ROC curves, one per class. There is no
+single ROC curve for a multiclass problem, and averaging them into one line
+hides exactly the class you are worried about.
+
+```{r roc, fig.cap = "One-vs-rest ROC curves."}
+binary_prediction <- as_uniml_multiclass(prediction)
+plot_roc(binary_prediction)
+```
+
+```{r confusion-plot, fig.cap = "Confusion matrix: reference classes in rows, predicted in columns."}
+plot_confusion(binary_prediction)
+```
+
+## What is deliberately missing
+
+These are not gaps to be filled in later without a decision; each needs a
+convention that a package should not choose silently.
+
+* **Calibration.** A multiclass reliability curve can mean per-class one-vs-rest
+  reliability, a top-label curve, or a multinomial score. `plot_calibration()`
+  and `calibrate_probabilities()` refuse rather than pick one; the Brier score
+  and the log loss are the calibrated-probability summaries available today.
+* **Decision-curve analysis.** Net benefit compares one event against no event.
+  Run one class against the rest with `as_uniml_binary()` and `dca()` if that is
+  the question you are asking.
+* **NRI / IDI, DeLong, Hosmer-Lemeshow.** All three are defined for a single
+  positive class. They are not implemented for `uniml_multiclass`.
+* **`run_workflow()`.** The full workflow is binary-only for now: its prediction
+  table, thresholds, calibrators, and post-model tests all assume one probability
+  column. Calling it on a multiclass specification stops with a message pointing
+  back at this vignette.
+
+## References
+
+Hand DJ, Till RJ (2001). A simple generalisation of the area under the ROC curve
+for multiple class classification problems. *Machine Learning*, 45, 171-186.
+doi:10.1023/A:1010920819831
+
+Sokolova M, Lapalme G (2009). A systematic analysis of performance measures for
+classification tasks. *Information Processing & Management*, 45(4), 427-437.
+doi:10.1016/j.ipm.2009.03.002
+
+Cohen J (1960). A coefficient of agreement for nominal scales. *Educational and
+Psychological Measurement*, 20(1), 37-46. doi:10.1177/001316446002000104
+
+Brier GW (1950). Verification of forecasts expressed in terms of probability.
+*Monthly Weather Review*, 78(1), 1-3.
+
+See `system.file("REFERENCES.md", package = "uniml")` for the full list.

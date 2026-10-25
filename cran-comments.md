@@ -14,7 +14,7 @@ There are currently no downstream dependencies for this package.
 
 ## Notes
 
-* This is the first CRAN release of uniml (0.1.0).
+* This is the first CRAN release of uniml (0.2.0).
 
 * Every package in `Imports` and `Suggests` is available on CRAN. An earlier
   development version suggested `mlr3extralearners`, which is not on CRAN; that
@@ -29,15 +29,18 @@ There are currently no downstream dependencies for this package.
   `pROC::aSAH` so that at least one worked example uses a published cohort. That
   data set ships with the 'pROC' package and is not downloaded.
 
-* Checking examples takes about 11 seconds. The test suite takes about two
+* Checking examples takes about 14 seconds. The test suite takes about four
   minutes; individual tests skip when an optional `Suggests` package is missing.
 
 * Vignettes execute the full workflow, including model training and tuning, so
   `--as-cran` spends most of its time rebuilding them.
 
-* Only binary classification is implemented. The `multiclass` and `survival`
-  task types are registered as placeholders and raise a "not implemented" error;
-  this is documented in `?list_task_types` and in the README.
+* Binary and multiclass outcomes are implemented. `run_workflow()` is binary-only
+  and stops with an explanatory message on a multiclass specification; the
+  multiclass path is used layer by layer and has its own vignette. The `survival`
+  task type is registered as a placeholder and raises a "not implemented" error.
+  This is documented in `?list_task_types`, in the README's scope section, and in
+  `vignette("uniml-multiclass")`.
 
 * The remote CRAN incoming check could not reach CRAN from the machine used for
   this submission (`PACKAGES.in` timed out), so it was run with

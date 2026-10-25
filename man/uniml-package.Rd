@@ -6,7 +6,7 @@
 \alias{uniml-package}
 \title{uniml: Unified Predictive Modeling Toolkit}
 \description{
-A unified toolkit for predictive modeling covering preprocessing, feature selection, model training and tuning, evaluation, visualization, and SHAP interpretability, with an extensible task-type architecture.
+A unified toolkit for binary and multiclass classification modelling that chains preprocessing, feature selection, model training and tuning, evaluation, visualization, and SHAP interpretability behind one set of objects, while keeping a strict separation between the data that fits a model and the data that judges it. Models, tasks, resampling, and tuning are 'mlr3' objects, multiple imputation is pooled with Rubin's rules, and results are exported in a layout that can be reopened outside R.
 }
 \seealso{
 Useful links:

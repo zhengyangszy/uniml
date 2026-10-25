@@ -258,7 +258,8 @@
 #'
 #' @param task_type Task type. M2 supports `"binary"`.
 #' @param outcome Outcome column name.
-#' @param positive Positive outcome class. Required.
+#' @param positive Positive outcome class. Required for a binary task and must be
+#'   `NULL` for a task type without a positive class, such as `"multiclass"`.
 #' @param id Optional ID column name.
 #' @param exclude Optional character vector of columns excluded from modelling.
 #' @param labels Optional named character vector mapping column names to display labels.
@@ -274,10 +275,10 @@
 #' )
 #' spec
 #' @export
-uniml_spec <- function(task_type, outcome, positive, id = NULL, exclude = NULL,
+uniml_spec <- function(task_type, outcome, positive = NULL, id = NULL, exclude = NULL,
                        labels = NULL, ...) {
-  if (missing(task_type) || missing(outcome) || missing(positive)) {
-    .abort("`task_type`, `outcome`, and `positive` must be supplied.")
+  if (missing(task_type) || missing(outcome)) {
+    .abort("`task_type` and `outcome` must be supplied.")
   }
 
   values <- .default_spec_values()
@@ -392,8 +393,15 @@ validate_uniml_spec <- function(x) {
     ))
   }
   .assert_scalar_character(x$outcome, "outcome")
-  if (length(x$positive) != 1L || is.na(x$positive)) {
-    .abort("`positive` must be a single non-missing value.")
+  if (.task_type_requires_positive(x$task_type)) {
+    if (length(x$positive) != 1L || is.na(x$positive)) {
+      .abort("`positive` must be a single non-missing value.")
+    }
+  } else if (!is.null(x$positive)) {
+    .abort(sprintf(
+      "`positive` must be NULL for task type \"%s\"; a positive class only exists for binary outcomes.",
+      x$task_type
+    ))
   }
 
   .assert_character_vector(x$id, "id", allow_null = TRUE)
@@ -632,7 +640,10 @@ print.uniml_spec <- function(x, ...) {
   cat("<uniml_spec>\n")
   cat(sprintf("task_type: %s\n", x$task_type))
   cat(sprintf("outcome: %s\n", x$outcome))
-  cat(sprintf("positive: %s\n", as.character(x$positive)))
+  cat(sprintf(
+    "positive: %s\n",
+    if (is.null(x$positive)) "none" else as.character(x$positive)
+  ))
   cat(sprintf("leakage_policy: %s\n", x$leakage_policy))
   cat(sprintf("in_cv: %s\n", if (length(x$in_cv)) paste(x$in_cv, collapse = ", ") else "none"))
   cat(sprintf("selection: %s\n", paste(x$selection$methods, collapse = ", ")))
@@ -670,24 +681,38 @@ as_uniml_data <- function(data, spec) {
   }
 
   raw_outcome <- data[[spec$outcome]]
-  present <- unique(as.character(raw_outcome[!is.na(raw_outcome)]))
-  if (length(present) != 2L) {
-    .abort("The binary outcome must contain exactly two non-missing classes.")
-  }
-  positive <- as.character(spec$positive)
-  if (!positive %in% present) {
-    .abort("`positive` must match one of the observed outcome classes.")
-  }
-  other <- setdiff(present, positive)
-  if (length(other) != 1L) {
-    .abort("The binary outcome must contain exactly one class other than `positive`.")
+  present <- sort(unique(as.character(raw_outcome[!is.na(raw_outcome)])))
+  if (.task_type_requires_positive(spec$task_type)) {
+    if (length(present) != 2L) {
+      .abort("The binary outcome must contain exactly two non-missing classes.")
+    }
+    positive <- as.character(spec$positive)
+    if (!positive %in% present) {
+      .abort("`positive` must match one of the observed outcome classes.")
+    }
+    other <- setdiff(present, positive)
+    if (length(other) != 1L) {
+      .abort("The binary outcome must contain exactly one class other than `positive`.")
+    }
+    outcome_levels <- c(positive, other)
+  } else {
+    if (length(present) < 2L) {
+      .abort(sprintf(
+        "The %s outcome must contain at least two non-missing classes.",
+        spec$task_type
+      ))
+    }
+    positive <- NULL
+    # Sorted levels keep the class order deterministic across data sets and
+    # machines; nothing downstream depends on the order for a multiclass task.
+    outcome_levels <- present
   }
 
   keep <- if (identical(spec$outcome_na_action, "drop")) !is.na(raw_outcome) else rep(TRUE, nrow(data))
   dropped <- sum(!keep)
   data <- data[keep, , drop = FALSE]
   raw_outcome <- data[[spec$outcome]]
-  outcome <- factor(as.character(raw_outcome), levels = c(positive, other))
+  outcome <- factor(as.character(raw_outcome), levels = outcome_levels)
 
   role <- rep("feature", ncol(data))
   names(role) <- names(data)
@@ -795,8 +820,15 @@ validate_uniml_data <- function(x) {
   if (length(x$outcome) != nrow(x$data)) {
     .abort("`outcome` must have one value per row in `data`.")
   }
-  if (!is.factor(x$outcome) || nlevels(x$outcome) != 2L) {
-    .abort("`outcome` must be a two-level factor.")
+  if (!is.factor(x$outcome)) {
+    .abort("`outcome` must be a factor.")
+  }
+  if (.task_type_requires_positive(x$spec$task_type)) {
+    if (nlevels(x$outcome) != 2L) {
+      .abort("`outcome` must be a two-level factor for a binary task.")
+    }
+  } else if (nlevels(x$outcome) < 2L) {
+    .abort("`outcome` must have at least two levels.")
   }
   if (!identical(names(x$role), names(x$data))) {
     .abort("`role` names must match the columns in `data`.")
@@ -828,7 +860,11 @@ print.uniml_data <- function(x, ...) {
   cat("<uniml_data>\n")
   cat(sprintf("rows: %d\n", x$meta$n))
   cat(sprintf("features: %d\n", x$meta$n_features))
-  cat(sprintf("outcome: %s (positive = %s)\n", x$outcome_name, x$positive))
+  cat(sprintf(
+    "outcome: %s (positive = %s)\n",
+    x$outcome_name,
+    if (is.null(x$positive)) "none" else as.character(x$positive)
+  ))
   if (length(x$warnings) > 0L) {
     cat(sprintf("warnings: %d recorded\n", length(x$warnings)))
   }

@@ -84,6 +84,17 @@ directly. DOIs are given where the publisher assigns one.
 | Brier score | Brier GW (1950). Verification of forecasts expressed in terms of probability. *Monthly Weather Review*, 78(1), 1-3. | `calc_metrics()` |
 | Cohen's kappa | Landis JR, Koch GG (1977). The measurement of observer agreement for categorical data. *Biometrics*, 33(1), 159-174. doi:10.2307/2529310 | `calc_metrics()` |
 
+## Multiclass outcomes
+
+| Method | Reference | Used by |
+| --- | --- | --- |
+| One-vs-rest multiclass AUC | Hand DJ, Till RJ (2001). A simple generalisation of the area under the ROC curve for multiple class classification problems. *Machine Learning*, 45, 171-186. doi:10.1023/A:1010920819831 | `calc_metrics()`, `plot_roc()` |
+| Averaging conventions (macro / micro) | Sokolova M, Lapalme G (2009). A systematic analysis of performance measures for classification tasks. *Information Processing & Management*, 45(4), 427-437. doi:10.1016/j.ipm.2009.03.002 | `calc_metrics()`, `$per_class` |
+| Cohen's kappa for k classes | Cohen J (1960). A coefficient of agreement for nominal scales. *Educational and Psychological Measurement*, 20(1), 37-46. doi:10.1177/001316446002000104 | `calc_metrics()` |
+| Multi-class Brier score | Brier GW (1950), as above; implementation follows `mlr3measures::mbrier` | `calc_metrics()` |
+| Log loss | Good IJ (1952). Rational decisions. *Journal of the Royal Statistical Society B*, 14(1), 107-114. | `calc_metrics()` |
+| One-vs-rest ROC curves | Fawcett T (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, 27(8), 861-874. doi:10.1016/j.patrec.2005.10.010 | `plot_roc()` |
+
 ## Explainability
 
 | Method | Reference | Used by |

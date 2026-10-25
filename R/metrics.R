@@ -388,6 +388,15 @@ calc_metrics.PredictionClassif <- function(x, threshold = NULL,
   if (is.null(x$prob) || ncol(x$prob) == 0L) {
     .abort("The prediction object does not contain probabilities.")
   }
+  if (ncol(x$prob) > 2L) {
+    # Three or more classes cannot be scored as one positive class against the
+    # rest without choosing a convention, so they get their own metric set.
+    return(.calc_multiclass_metrics(
+      x$prob,
+      as.character(x$truth),
+      metrics = metrics
+    ))
+  }
   positive <- .prediction_positive_class(x, positive = positive)
   prob <- x$prob[, positive]
   .calc_binary_metrics(

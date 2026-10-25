@@ -23,6 +23,48 @@
 | L8 可解释性 | `explain_shap()`、`plot_shap_*()`、`extract_thresholds()` | SHAP 重要性、蜂群、依赖、瀑布图 |
 | L9 工作流 | `run_workflow()`、`predict_uniml()` | 一键跑通与复用已拟合状态 |
 
+## 为什么用 uniml
+
+`uniml` 不取代 mlr3，也不取代 tidymodels。它只针对一件事给出有主见的编排：**产出一个
+二分类风险模型，外加一份你答辩得住的报告**。
+
+**和直接用 mlr3 比。** mlr3 提供学习器、任务、重采样、调参，并按你给的顺序执行。出问题
+的恰恰是「顺序」：只要在整份数据上拟合了标准化或特征筛选，之后所有交叉验证数字都会偏
+乐观。`uniml` 把这套顺序固定下来——只在训练集上拟合、只把参数套到留出集、绝不回头——
+并把剩下的选择变成显式的 `leakage_policy` 对象，而不是脚本写法带来的副作用；同时补上
+mlr3 留给你自己写的报告层：bootstrap 置信区间、折外预测拟合的校准、DeLong 与
+Hosmer–Lemeshow 检验、NRI/IDI、决策曲线、多重插补的 Rubin 池化、TRIPOD+AI 自检。
+
+**和 tidymodels 比。** `recipes` / `workflows` / `tune` 把建模机制做得很好。`uniml`
+瞄准的是**临床预测模型的报告路径**——统计量与审计轨迹——并建立在 mlr3 学习器生态上，
+所以里面每个模型都是你可以直接拿去用的 mlr3 学习器。
+
+**两边都不直接给的东西。** 严格 Rubin 规则作用在整条流水线上（而不是只针对一个指标）、
+能把每张图在 R 之外重建出来的导出目录、以及失败被记进 `result$meta$failures` 而不是
+悄悄消失。
+
+**什么情况下别用它。** 只要一个模型和一个 AUC，直接上 mlr3 更简单；要多分类、生存分析
+或深度学习，这个包目前还不行。
+
+## 适用范围与限制
+
+- **只支持二分类。** `multiclass` 和 `survival` 只注册了任务类型、把架构占位留出来，
+  调用会直接报 "not implemented"。
+- **示例数据是模拟的。** `inst/extdata` 两个文件都由
+  `data-raw/simulate-cvd-mortality.R` 生成，6.5% 的事件率是模拟参数。它们的作用是让
+  示例可运行、可复现；**不是真实患者队列**，在它们身上算出来的数字不能说明临床性能，
+  也不能说明这些方法在真实数据上的表现。
+- **只支持表格数据框。** 数值、因子、字符、逻辑四类列。不支持图像、文本、纵向/时变
+  协变量、删失、竞争风险。
+- **缺失机制假定为随机缺失（MAR）。** 填补方式为 `median_mode`、`mice`、`missForest`
+  或 `missRanger`；缺失依赖于未观测值的机制没有建模。
+- **不做公平性/亚组分析。** `tripod_ai_check()` 只会把这几条标成「缺失」，写不写是你
+  的事。
+- **固定学习器清单 + 你自己注入的。** 7 个默认、4 个可选；其他 mlr3 学习器也能用，但
+  不提供搜索空间时不会被调参。
+- **不是部署服务。** `predict_uniml()` 是在 R 里给数据框打分，没有 REST 接口、没有模型
+  仓库、没有漂移监控。
+
 ## 安装
 
 包还没有上 CRAN，从 GitHub 安装：
@@ -32,9 +74,8 @@
 remotes::install_github("zhengyangszy/uniml")
 ```
 
-内置 7 个模型（`lr`/`rf`/`xgb`/`nnet`/`knn`/`cart`/`nb`）和 4 个可选模型
-（`log_reg`/`svm`/`lda`/`qda`）。**任何 mlr3 分类学习器都能直接用**，包括不在
-CRAN 上的扩展包，先 `library()` 再按学习器名传入即可：
+内置 7 个默认模型和 4 个可选模型，详见 [可用模型](#可用模型)。**任何 mlr3 分类学习器
+都能直接用**，包括不在 CRAN 上的扩展包，先 `library()` 再按学习器名传入即可：
 
 ```r
 # remotes::install_github("mlr-org/mlr3extralearners")
@@ -86,6 +127,86 @@ plot_calibration(result)
 plot_dca(result)
 ```
 
+## 示例数据
+
+`inst/extdata` 里是两份**模拟**的心血管队列：
+
+| 文件 | 行数 | 用途 |
+| --- | ---: | --- |
+| `uniml-cvd-mortality.csv` | 2000 | 开发队列，切分为训练集与验证集 |
+| `uniml-cvd-mortality-new.csv` | 2000 | 独立的新入院队列，作为外部测试集 |
+
+两份数据的目标院内死亡率都设为 6.5%，实际事件率会有小幅差异（结局是抽样得到的）。
+新入院队列与开发队列独立生成，标识符不重叠。
+
+## 可用模型
+
+每个模型都是 mlr3 `Learner`，每份数据都变成 mlr3 `Task`，调参与重采样直接用 mlr3
+对象。默认提供 7 个稳定学习器：
+
+| 键 | mlr3 学习器 |
+| --- | --- |
+| `lr` | `classif.cv_glmnet` |
+| `rf` | `classif.ranger` |
+| `xgb` | `classif.xgboost` |
+| `nnet` | `classif.nnet` |
+| `knn` | `classif.kknn` |
+| `cart` | `classif.rpart` |
+| `nb` | `classif.naive_bayes` |
+
+另有 4 个可选学习器，可以按名字直接用，但既不会默认安装、也不提供搜索空间（使用 mlr3
+默认参数）：
+
+| 键 | mlr3 学习器 | 需要的包 |
+| --- | --- | --- |
+| `log_reg` | `classif.log_reg` | stats |
+| `svm` | `classif.svm` | e1071 |
+| `lda` | `classif.lda` | MASS |
+| `qda` | `classif.qda` | MASS |
+
+不限于这些键：任何已安装的 mlr3 分类学习器都能传给 `set_learners()`，此时使用 mlr3
+默认参数，除非你提供搜索空间。
+
+```r
+spec <- set_learners(spec, c("lr", "classif.log_reg", "classif.svm"), tune = TRUE)
+```
+
+自定义搜索空间：
+
+```r
+register_learner(
+  "svm_custom",
+  mlr3::lrn("classif.svm", predict_type = "prob", probability = TRUE),
+  paradox::ps(cost = paradox::p_dbl(0.1, 10), gamma = paradox::p_dbl(0.001, 1))
+)
+spec <- set_learners(spec, "svm_custom", tune = TRUE)
+```
+
+## 步骤参数
+
+每个阶段都接受显式参数列表，**写错名字会直接报错**，不会被静默忽略：
+
+```r
+spec <- set_preprocess(
+  spec,
+  impute = "mice",
+  impute_args = list(m = 5, max_iter = 10),
+  scale_args = list(vars = c("age", "bmi")),
+  encode_args = list(max_levels = 20)
+)
+spec <- set_feature_selection(
+  spec,
+  methods = c("lasso", "boruta"),
+  args = list(lasso = list(nfolds = 5, alpha = 0.8))
+)
+spec <- set_tuning(spec, folds = 5, repeats = 5, terminator = "seconds", seconds = 600)
+spec <- set_evaluation(
+  spec,
+  calibration = "platt",
+  calibration_args = list(folds = 5, bins = 10, fit = "out_of_fold")
+)
+```
+
 ## 数据角色（重要）
 
 `uniml` 完全建立在 mlr3 之上：每个模型都是 mlr3 `Learner`，每份数据都变成 mlr3 `Task`，
@@ -106,6 +227,43 @@ plot_dca(result)
 
 `select_on = "test"` 仍然可选，但会警告（会产生乐观偏倚）。`external` 永远不会被用于
 选择。
+
+## 泄漏策略
+
+`set_leakage_policy()` 决定哪些步骤在**交叉验证的每一折里重做**：
+
+| 模式 | 每折重做的步骤 | 什么时候用 |
+| --- | --- | --- |
+| `strict_in` | 填补、标准化、编码、特征筛选、平衡、调参 | 想要最不乐观的交叉验证估计，且跑得动 |
+| `strict_out` | 无 | 步骤很贵（Boruta、RFE、调参）且数据量大 |
+| `custom` | 特征筛选、平衡、调参 | 想自己指定折中方案 |
+
+```r
+spec <- set_leakage_policy(spec, mode = "custom", in_cv = c("selection", "balance"))
+```
+
+两点提醒：
+
+- `strict_out` 会在**训练集全量上拟合一次**筛选、平衡、调参。这些步骤因此见过每一行
+  训练数据，折内得分对它们来说是偏乐观的。交叉验证仍然适合**比较模型**，但不要当成
+  无偏的绝对性能报告。
+- 无论哪种模式，`validation`、`test`、`external` 都不参与拟合、调参、校准、阈值选择。
+  `strict_out` 放宽的是**训练集内部**的做法，不是外部。
+
+## 交叉验证与校准
+
+`run_workflow()` 会输出每折的交叉验证结果和汇总；`repeats > 1` 启用重复交叉验证，
+汇总时先在每个重复内对折取平均，再跨重复汇总。校准默认关闭（`calibration = "none"`），
+开启后在训练集的**折外预测**上拟合校准器，并同时保留原始与校准后的概率；分类阈值同样
+来自折外预测。任何被降级或失败的步骤都会写进 `result$meta$failures`，不会静默丢弃。
+
+## 导出与复用
+
+`export_results()` 会把所有需要的东西写成纯 CSV 加一个 RDS：
+`predictions/predictions.csv`（模型、数据集、原始与校准概率、真实标签）足以重建
+ROC/校准/DCA/混淆矩阵；`performance/thresholds.csv` 存每个模型的两套阈值；
+`shap/values_matrix_*.csv` 与 `shap/feature_values_*.csv` 可以自己画 SHAP 图；
+`result.rds` 是完整拟合状态，供 `predict_uniml()` 给新数据打分。
 
 ## 方法学约定
 
@@ -136,6 +294,13 @@ table(checklist$status)
 - `vignette("uniml-workflow")`：完整工作流（含外部验证、NRI/IDI、阈值、TRIPOD 自检）
 - `vignette("uniml-shap")`：SHAP 解释与可视化
 - `vignette("uniml-atomic")`：逐层单独使用各函数
+
+## 开发状态
+
+`uniml` 当前版本 `0.0.0.9000`，只实现了二分类任务类型。GitHub Actions 在 Windows、
+macOS、Linux 三平台做 `R CMD check`；
+`tests/testthat/test-consistency.R` 把指标层钉在独立实现上（`mlr3measures`、`pROC`、
+`PRROC`、`stats::glm()`、`stats::isoreg()`、`ResourceSelection`）。变更见 `NEWS.md`。
 
 ## 许可
 

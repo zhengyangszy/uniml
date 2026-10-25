@@ -26,12 +26,73 @@ own, and `run_workflow()` wires them together.
 | L8 SHAP | `explain_shap()`, `plot_shap_importance()`, `plot_shap_beeswarm()`, `plot_shap_dependence()`, `plot_shap_waterfall()`, `extract_thresholds()` | Interpretability |
 | L9 workflow | `run_workflow()`, `predict_uniml()` | End-to-end run and reuse of fitted state |
 
+## Why uniml
+
+`uniml` does not replace mlr3 or tidymodels. It is opinionated orchestration for
+one job: producing a binary risk model together with a report you can defend.
+
+**Compared with using mlr3 directly.** mlr3 gives you learners, tasks,
+resampling, and tuning, and it lets you assemble them in any order. Order is the
+part that goes wrong: fit a scaler or a feature selector on the full data frame
+and every cross-validated number becomes optimistic. `uniml` fixes the order
+once — fit on training data, apply to held-out data, never look back — turns the
+remaining choices into an explicit `leakage_policy` object instead of an accident
+of script layout, and adds the reporting layer mlr3 leaves to you: bootstrap
+intervals, calibration fitted on out-of-fold predictions, DeLong and
+Hosmer-Lemeshow tests, NRI/IDI, decision curves, Rubin pooling across
+imputations, and a TRIPOD+AI self-audit.
+
+**Compared with tidymodels.** `recipes`, `workflows`, and `tune` cover the
+modelling mechanics well. `uniml` targets the clinical-prediction reporting path
+— the statistics and the audit trail — and is built on the mlr3 learner
+ecosystem, so everything in it is an mlr3 learner you can also use directly.
+
+**What neither gives you out of the box.** Strict Rubin's rules applied across
+the whole pipeline rather than to a single metric, an export layout that rebuilds
+every figure outside R, and failures recorded in `result$meta$failures` instead
+of silently dropped.
+
+**When not to use it.** If you need a model and an AUC and nothing else, plain
+mlr3 is simpler. If you need multiclass, survival, or deep learning, this package
+is not it yet.
+
+## Scope and limitations
+
+- **Binary classification only.** `multiclass` and `survival` are registered as
+  task types so the architecture is visible, but they raise a "not implemented"
+  error.
+- **The example cohorts are synthetic.** Both files in `inst/extdata` come from
+  `data-raw/simulate-cvd-mortality.R`, and the 6.5% target event rate is a
+  simulation parameter. They make the examples runnable and reproducible. They
+  are not a patient cohort, and numbers computed on them say nothing about
+  clinical performance or about how the methods behave on real data.
+- **Tabular data frames only.** Numeric, factor, character, and logical columns.
+  No images, text, longitudinal or time-varying covariates, censoring, or
+  competing risks.
+- **Missing data is assumed missing at random.** Imputation is `median_mode`,
+  `mice`, `missForest`, or `missRanger`; missingness that depends on the
+  unobserved value is not modelled.
+- **No fairness or subgroup analysis.** `tripod_ai_check()` reports those items
+  as missing; writing them is your job.
+- **A fixed learner registry, plus anything you inject.** Seven defaults and four
+  optional keys. Other mlr3 learners work, but they are not tuned unless a search
+  space is supplied.
+- **Not a deployment service.** `predict_uniml()` scores a data frame in R. There
+  is no REST endpoint, no model registry, and no drift monitoring.
+
 ## Installation
 
-The package is not on CRAN yet. Install it from a local checkout:
+The package is not on CRAN yet. Install it from GitHub:
 
 ```r
-install.packages("uniml", repos = NULL, type = "source")
+# install.packages("remotes")
+remotes::install_github("zhengyangszy/uniml")
+```
+
+Or from a local checkout, after `R CMD build uniml`:
+
+```r
+install.packages("uniml_0.0.0.9000.tar.gz", repos = NULL, type = "source")
 ```
 
 ## Quick start
@@ -220,6 +281,30 @@ the held-out data. `set_leakage_policy()` controls whether selection, balancing,
 and tuning are re-run inside each cross-validation fold (`strict_in`), left
 outside the folds (`strict_out`), or configured step by step (`custom`).
 
+| Mode | Steps re-run inside each fold | Use it when |
+| --- | --- | --- |
+| `strict_in` | imputation, scaling, encoding, selection, balance, tuning | you want the least optimistic cross-validation estimate and can pay for the run time |
+| `strict_out` | none | the steps are expensive (Boruta, RFE, tuning) and the data set is large |
+| `custom` | selection, balance, tuning | you want to name the trade-off yourself |
+
+```r
+spec <- set_leakage_policy(
+  spec,
+  mode = "custom",
+  in_cv = c("selection", "balance")
+)
+```
+
+Two cautions:
+
+- `strict_out` fits selection, balancing, and tuning **once on the whole training
+  set**. Those steps have then seen every training row, so per-fold scores are
+  optimistic for them. Cross-validation stays useful for comparing models; do
+  not report it as an unbiased absolute estimate.
+- Whatever the mode, `validation`, `test`, and `external` are never used for
+  fitting, tuning, calibration, or threshold selection. `strict_out` relaxes what
+  happens *inside* the training set, not outside it.
+
 ## Data sets and selection
 
 `run_workflow()` takes up to four data sets. `test` and `external` are both
@@ -253,6 +338,21 @@ Rubin's rules (`pool_mi()`, Barnard-Rubin degrees of freedom), and runs
 cross-validation once per imputation before pooling. Prediction probabilities
 are averaged across imputations ("pooled predictions") and are labelled
 separately from the Rubin-pooled metric table.
+
+## Methodological conventions
+
+The choices that are not obvious are deliberate:
+
+- **Balancing is off by default** (`balance = "none"`). Resampling a risk model
+  changes what the predicted probability means (van den Goorbergh et al., 2022),
+  so it is opt-in.
+- **Multiple imputation is pooled with strict Rubin's rules** — `T = U + (1 + 1/m)B`,
+  Barnard-Rubin degrees of freedom, a t interval, and the interval clamped to the
+  metric's domain.
+- **Calibration and thresholds are fitted on out-of-fold training predictions**,
+  never on validation or test data.
+- **Nothing fails silently.** A step that is skipped or degraded is recorded in
+  `result$meta$failures` and raises a warning when the workflow returns.
 
 ## Reporting
 
@@ -295,5 +395,8 @@ vignette("uniml-shap", package = "uniml")
 ## Development status
 
 `uniml` is at version `0.0.0.9000`. The binary task type is implemented;
-`multiclass` and `survival` are registered as placeholders only. See
-`NEWS.md` for changes.
+`multiclass` and `survival` are registered as placeholders only. GitHub Actions
+checks the package on Windows, macOS, and Linux, and
+`tests/testthat/test-consistency.R` pins the metric layer to independent
+implementations (`mlr3measures`, `pROC`, `PRROC`, `stats::glm()`,
+`stats::isoreg()`, `ResourceSelection`). See `NEWS.md` for changes.

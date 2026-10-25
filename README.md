@@ -92,7 +92,7 @@ remotes::install_github("zhengyangszy/uniml")
 Or from a local checkout, after `R CMD build uniml`:
 
 ```r
-install.packages("uniml_0.0.0.9000.tar.gz", repos = NULL, type = "source")
+install.packages("uniml_0.1.0.tar.gz", repos = NULL, type = "source")
 ```
 
 ## Quick start
@@ -402,7 +402,7 @@ says so instead of returning `NaN`.
 
 ## Development status
 
-`uniml` is at version `0.0.0.9000`. The binary task type is implemented;
+`uniml` is at version `0.1.0`. The binary task type is implemented;
 `multiclass` and `survival` are registered as placeholders only. GitHub Actions
 checks the package on Windows, macOS, and Linux, and
 `tests/testthat/test-consistency.R` pins the metric layer to independent

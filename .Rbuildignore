@@ -6,3 +6,4 @@
 ^data-raw$
 ^README\.zh\.md$
 ^docs$
+^cran-comments\.md$

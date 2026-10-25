@@ -9,7 +9,7 @@ bibentry(
     email = "19943405117@163.com"
   ),
   year = "2026",
-  note = "R package version 0.0.0.9000",
+  note = "R package version 0.1.0",
   url = "https://github.com/zhengyangszy/uniml"
 )
 

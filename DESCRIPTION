@@ -1,14 +1,18 @@
 Package: uniml
 Type: Package
 Title: Unified Predictive Modeling Toolkit
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R:
     person("Steve", "Shi", email = "19943405117@163.com", role = c("aut", "cre"))
 Author: Steve Shi [aut, cre]
 Maintainer: Steve Shi <19943405117@163.com>
-Description: A unified toolkit for predictive modeling covering preprocessing,
-    feature selection, model training and tuning, evaluation, visualization,
-    and SHAP interpretability, with an extensible task-type architecture.
+Description: A unified toolkit for binary classification modelling that chains
+    preprocessing, feature selection, model training and tuning, evaluation,
+    visualization, and SHAP interpretability behind one set of objects, while
+    keeping a strict separation between the data that fits a model and the data
+    that judges it. Models, tasks, resampling, and tuning are 'mlr3' objects,
+    multiple imputation is pooled with Rubin's rules, and results are exported
+    in a layout that can be reopened outside R.
 License: MIT + file LICENSE
 URL: https://github.com/zhengyangszy/uniml
 BugReports: https://github.com/zhengyangszy/uniml/issues

@@ -1,7 +1,7 @@
-# uniml 0.0.0.9000
+# uniml 0.1.0
 
-First development version. The binary-classification stack is implemented end
-to end; `multiclass` and `survival` are registered as placeholders and raise a
+First release. The binary-classification stack is implemented end to end;
+`multiclass` and `survival` are registered as placeholders and raise a
 "not implemented" error.
 
 ## Reporting and interoperability

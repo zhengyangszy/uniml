@@ -301,7 +301,7 @@ table(checklist$status)
 
 ## 开发状态
 
-`uniml` 当前版本 `0.0.0.9000`，只实现了二分类任务类型。GitHub Actions 在 Windows、
+`uniml` 当前版本 `0.1.0`，只实现了二分类任务类型。GitHub Actions 在 Windows、
 macOS、Linux 三平台做 `R CMD check`；
 `tests/testthat/test-consistency.R` 把指标层钉在独立实现上（`mlr3measures`、`pROC`、
 `PRROC`、`stats::glm()`、`stats::isoreg()`、`ResourceSelection`）。变更见 `NEWS.md`。

@@ -37,11 +37,13 @@ validation and optional test sets never take part in fitting; they are only
 transformed with parameters estimated on the training data.
 }
 \details{
-The pipeline is the binary one. Its fold, preprocessing, tuning, metric, and
-ranking layers are already dispatched by task type (see \code{\link[=task_type_spec]{task_type_spec()}} and
-\code{\link[=rank_models]{rank_models()}}), but the reporting stages below it are defined for a single
-probability per patient, so other task types are rejected instead of being
-run in a reduced form.
+The fitting half of the pipeline lives in \code{\link[=workflow_engine]{workflow_engine()}}, which is
+task-type neutral: it prepares the data, tunes, trains, and predicts through
+the adapter registered by \code{\link[=register_workflow_adapter]{register_workflow_adapter()}}. What \code{run_workflow()}
+adds is the binary report, because thresholds, calibration, DeLong and
+Hosmer-Lemeshow tests, NRI/IDI, and decision curves are defined for a single
+probability per patient. Other task types call \code{workflow_engine()} and score
+the predictions themselves instead of running this function in a reduced form.
 }
 \examples{
 \dontrun{

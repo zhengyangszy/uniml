@@ -279,7 +279,7 @@ test_that("run_workflow() refuses multiclass with a pointer to the layers", {
 })
 
 test_that("the workflow metric adapter is the only task-type seam", {
-  # Binary goes through the binary metric calculator.
+  # Binary goes through the registered binary adapter.
   binary_spec <- uniml_spec(task_type = "binary", outcome = "y", positive = "yes")
   values <- .workflow_metric_values(
     probs = c(0.1, 0.4, 0.6, 0.9),
@@ -291,8 +291,8 @@ test_that("the workflow metric adapter is the only task-type seam", {
   expect_identical(names(values), c("auc", "accuracy"))
   expect_equal(unname(values$accuracy), 1)
 
-  # Any other task type fails loudly and names where its adapter belongs,
-  # instead of returning binary numbers for a multiclass prediction.
+  # A task type without an adapter fails loudly and names the registration
+  # function, instead of returning binary numbers for a multiclass prediction.
   multiclass_spec <- uniml_spec(task_type = "multiclass", outcome = "y")
   expect_error(
     .workflow_metric_values(
@@ -302,6 +302,6 @@ test_that("the workflow metric adapter is the only task-type seam", {
       spec = multiclass_spec,
       metrics = "auc"
     ),
-    "no metric adapter for task type \\\"multiclass\\\""
+    "No workflow adapter is registered"
   )
 })

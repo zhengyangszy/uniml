@@ -544,8 +544,8 @@
   list(prediction = prediction, prob = as.numeric(probabilities[, column]))
 }
 
-.workflow_metric_names <- function() {
-  .ci_metric_names()
+.workflow_metric_names <- function(spec) {
+  workflow_adapter(spec$task_type)$metric_names(spec)
 }
 
 ## Failure log ----------------------------------------------------------------
@@ -706,27 +706,16 @@
 }
 
 # Task-type seam: this is the only place where the workflow turns predictions
-# into a row of metrics. Binary outcomes reduce a patient to one probability;
-# task types whose prediction is not a single probability (survival time points,
-# distributions) have to contribute their own arm here rather than editing the
-# fold loop.
+# into a row of metrics. The operation itself is supplied by the task type's
+# adapter, so a new outcome shape plugs in there instead of here.
 .workflow_metric_values <- function(probs, truth, threshold, spec, metrics) {
-  if (identical(spec$task_type, "binary")) {
-    return(.calc_binary_metrics(
-      probs = probs,
-      truth = truth,
-      threshold = threshold,
-      positive = spec$positive,
-      metrics = metrics
-    ))
-  }
-  .abort(sprintf(
-    paste(
-      "The workflow has no metric adapter for task type \"%s\".",
-      "Add one to `.workflow_metric_values()` in R/workflow.R."
-    ),
-    spec$task_type
-  ))
+  workflow_adapter(spec$task_type)$metrics(
+    value = probs,
+    truth = truth,
+    spec = spec,
+    metrics = metrics,
+    context = list(threshold = threshold)
+  )
 }
 
 .workflow_metric_row <- function(probs, truth, threshold, spec, model, set,
@@ -736,7 +725,7 @@
     truth = truth,
     threshold = threshold,
     spec = spec,
-    metrics = .workflow_metric_names()
+    metrics = .workflow_metric_names(spec)
   )
   row <- data.frame(
     model = model,
@@ -1402,7 +1391,7 @@
 .workflow_cv <- function(data, spec, full_preprocessor, full_selection,
                          tuned_models, failures = NULL, preprocessed = FALSE) {
   resampling <- .workflow_folds(data, spec)
-  metric_names <- .workflow_metric_names()
+  metric_names <- .workflow_metric_names(spec)
   rows <- list()
   inner_ratio <- max(0.5, min(0.8, 1 - 1 / max(2L, as.integer(spec$tuning$folds))))
   instance <- as.data.frame(resampling$instance)
@@ -1541,7 +1530,7 @@
       stringsAsFactors = FALSE
     )
   } else {
-    .workflow_cv_summary(detailed, .workflow_metric_names())
+    .workflow_cv_summary(detailed, .workflow_metric_names(spec))
   }
   list(
     resampling = resampling,
@@ -1901,11 +1890,13 @@
 #' validation and optional test sets never take part in fitting; they are only
 #' transformed with parameters estimated on the training data.
 #'
-#' The pipeline is the binary one. Its fold, preprocessing, tuning, metric, and
-#' ranking layers are already dispatched by task type (see [task_type_spec()] and
-#' [rank_models()]), but the reporting stages below it are defined for a single
-#' probability per patient, so other task types are rejected instead of being
-#' run in a reduced form.
+#' The fitting half of the pipeline lives in [workflow_engine()], which is
+#' task-type neutral: it prepares the data, tunes, trains, and predicts through
+#' the adapter registered by [register_workflow_adapter()]. What `run_workflow()`
+#' adds is the binary report, because thresholds, calibration, DeLong and
+#' Hosmer-Lemeshow tests, NRI/IDI, and decision curves are defined for a single
+#' probability per patient. Other task types call `workflow_engine()` and score
+#' the predictions themselves instead of running this function in a reduced form.
 #'
 #' @param spec A `uniml_spec` object.
 #' @param train Training data frame.
@@ -1952,217 +1943,46 @@ run_workflow <- function(spec, train, validation, test = NULL,
   if (!identical(spec$task_type, "binary")) {
     .abort(sprintf(
       paste(
-        "`run_workflow()` reports the \"binary\" pipeline only; it cannot evaluate",
-        "a \"%s\" outcome. Thresholds, calibration, DeLong/Hosmer-Lemeshow tests,",
-        "NRI/IDI, and decision curves are defined for one probability per patient.",
-        "The fold, preprocessing, tuning, metric, and ranking layers already",
-        "dispatch on task type. Use `as_uniml_data()`, `make_task()`,",
-        "`train_model()`, `tune_model()`, `calc_metrics()` and `rank_models()`",
-        "directly, or see `vignette(\"uniml-multiclass\")`."
+        "`run_workflow()` is the binary report; it cannot evaluate a \"%s\"",
+        "outcome. Thresholds, calibration, DeLong/Hosmer-Lemeshow tests, NRI/IDI,",
+        "and decision curves are defined for one probability per patient.",
+        "The fitting engine is task-type neutral: `workflow_engine()` prepares",
+        "the data, tunes, trains, and predicts using the task type's adapter, and",
+        "`register_workflow_adapter()` is how a new outcome shape plugs in.",
+        "Use `workflow_engine()` with your own scoring, or see",
+        "`vignette(\"uniml-multiclass\")` for the layer-by-layer route."
       ),
       spec$task_type
     ))
   }
-  strategy <- spec$output$future_strategy
-  if (identical(strategy, "sequential")) {
-    future::plan(future::sequential)
-  } else {
-    future::plan(strategy, workers = as.integer(spec$output$n_workers))
-  }
-  on.exit(future::plan(future::sequential), add = TRUE)
-  prepared_train <- .workflow_prepare_data(train, spec, "train")
-  prepared_validation <- .workflow_prepare_data(
-    validation,
-    spec,
-    "validation",
-    levels = prepared_train$levels,
-    require_two = FALSE
-  )
-  prepared_test <- if (is.null(test)) {
-    NULL
-  } else {
-    .workflow_prepare_data(
-      test,
-      spec,
-      "test",
-      levels = prepared_train$levels,
-      require_two = FALSE
-    )
-  }
-  prepared_external <- if (is.null(external)) {
-    NULL
-  } else {
-    .workflow_prepare_data(
-      external,
-      spec,
-      "external",
-      levels = prepared_train$levels,
-      require_two = FALSE
-    )
-  }
-  train_data <- prepared_train$data
-  if (!spec$positive %in% prepared_train$levels) {
-    .abort(sprintf("`positive` = \"%s\" is not present in the training outcome.", spec$positive))
-  }
-  if (length(unique(train_data[[spec$outcome]])) < 2L) {
-    .abort("The training outcome must contain two classes.")
-  }
+  adapter <- workflow_adapter(spec$task_type)
+  engine <- workflow_engine(spec, train, validation, test, external, adapter = adapter)
+  prepared_train <- engine$prepared$train
+  prepared_validation <- engine$prepared$validation
+  prepared_test <- engine$prepared$test
+  prepared_external <- engine$prepared$external
+  train_data <- engine$train_data
+  full_preprocessor <- engine$preprocessor
+  imputation_preprocessors <- engine$imputation_preprocessors
+  selections <- engine$selections
+  selection <- engine$selection
+  selected_features <- engine$selected_features
+  task <- engine$task
+  learners <- engine$learners
+  failures <- engine$failures
+  multi_imputation <- engine$multi_imputation
+  tuning <- engine$tuning
 
-  full_preprocessor <- .workflow_fit_preprocessor(train_data, spec)
-  imputation_preprocessors <- .workflow_imputation_preprocessors(
-    train_data,
-    spec,
-    full_preprocessor
-  )
-  multi_imputation <- length(imputation_preprocessors) > 1L
-
-  processed_train <- imputation_preprocessors[[1L]]$train
-  selections <- lapply(imputation_preprocessors, function(preprocessor) {
-    found <- .workflow_select_features(preprocessor$train, spec)
-    if (inherits(found, "error")) {
-      stop(found)
-    }
-    found
-  })
-  selection <- if (multi_imputation) {
-    .workflow_pool_selection(selections)
-  } else {
-    selections[[1L]]
-  }
-
-  selected_features <- intersect(
-    as.character(selection$selected_features),
-    names(processed_train)
-  )
-  if (length(selected_features) == 0L) {
-    .abort("Feature selection returned no features available in the processed training data.")
-  }
-  task <- make_task(
-    processed_train[, c(selected_features, spec$outcome), drop = FALSE],
-    spec
-  )
-  failures <- .new_failure_log()
-  learners <- resolve_learners(spec, task = task, n_train = task$nrow)
-  learners <- .workflow_guard_single_feature(learners, task, failures)
-
-  tuning <- list()
   models <- list()
   prediction_entries <- list()
   threshold_values <- list()
   metric_rows <- list()
   ci_rows <- list()
-  for (key in names(learners)) {
-    learner_spec <- learners[[key]]
-    run_states <- list()
-    for (imputation in seq_along(imputation_preprocessors)) {
-      preprocessor <- imputation_preprocessors[[imputation]]
-      imputation_selection <- selections[[imputation]]
-      imputation_train <- preprocessor$train
-      features <- intersect(
-        as.character(imputation_selection$selected_features),
-        names(imputation_train)
-      )
-      if (length(features) == 0L) {
-        features <- intersect(selected_features, names(imputation_train))
-      }
-      if (length(features) == 0L) {
-        .record_failure(failures, key, "features",
-                        "No selected feature was available in the processed data.")
-        next
-      }
-      imputation_task <- make_task(
-        imputation_train[, c(features, spec$outcome), drop = FALSE],
-        spec
-      )
-      tuned <- tryCatch(
-        tune_model(
-          imputation_task,
-          learner_spec,
-          resampling = .workflow_tuning_resampling(spec),
-          tuner = spec$tuning$tuner,
-          terminator = .workflow_tuning_terminator(spec),
-          nested = spec$tuning$nested,
-          seed = spec$seed
-        ),
-        error = function(e) e
-      )
-      if (inherits(tuned, "error") || identical(tuned$status, "failed")) {
-        .record_failure(
-          failures,
-          key,
-          "tuning",
-          if (inherits(tuned, "error")) conditionMessage(tuned) else "Tuning failed."
-        )
-        next
-      }
-      tuned$metric <- spec$tuning$metric
-      tuned$learner_key <- key
-      learner <- tryCatch(
-        train_model(imputation_task, tuned$learner, params = tuned$best_params),
-        error = function(e) e
-      )
-      if (inherits(learner, "error")) {
-        .record_failure(failures, key, "training", conditionMessage(learner))
-        next
-      }
-      sets <- list(
-        train = imputation_train,
-        validation = prepared_validation$data
-      )
-      if (!is.null(prepared_test)) {
-        sets$test <- prepared_test$data
-      }
-      if (!is.null(prepared_external)) {
-        sets$external <- prepared_external$data
-      }
-      probs <- list()
-      for (set in names(sets)) {
-        transformed <- if (identical(set, "train")) {
-          imputation_train
-        } else {
-          apply_preprocessor(preprocessor, sets[[set]])
-        }
-        set_features <- intersect(features, names(transformed))
-        if (length(set_features) == 0L) {
-          next
-        }
-        set_task <- make_task(
-          transformed[, c(set_features, spec$outcome), drop = FALSE],
-          spec
-        )
-        predicted <- tryCatch(
-          .workflow_probabilities(learner, set_task, spec$positive),
-          error = function(e) e
-        )
-        if (inherits(predicted, "error")) {
-          next
-        }
-        probs[[set]] <- list(
-          prob = predicted$prob,
-          truth = as.character(sets[[set]][[spec$outcome]])
-        )
-      }
-      if (!"train" %in% names(probs)) {
-        next
-      }
-      run_states[[length(run_states) + 1L]] <- list(
-        imputation = imputation,
-        model_key = key,
-        tuned = tuned,
-        learner = learner,
-        task = imputation_task,
-        preprocessor = preprocessor,
-        selection = imputation_selection,
-        probs = probs
-      )
-    }
-    if (length(run_states) == 0L) {
-      next
-    }
-    tuning[[key]] <- run_states[[1L]]$tuned
-    train_probabilities <- lapply(run_states, function(state) state$probs$train$prob)
-    pooled_train_prob <- .workflow_mean_prob(train_probabilities)
-    train_truth <- run_states[[1L]]$probs$train$truth
+  for (key in names(engine$states)) {
+    run_states <- engine$states[[key]]
+    train_probabilities <- lapply(run_states, function(state) state$values$train$value)
+    pooled_train_prob <- adapter$pool(train_probabilities)
+    train_truth <- run_states[[1L]]$values$train$truth
     train_event <- as.integer(
       as.character(train_truth) == as.character(spec$positive)
     )
@@ -2287,15 +2107,15 @@ run_workflow <- function(spec, train, validation, test = NULL,
         lapply(run_states, function(state) state$tuned$best_params)
       )
     }
-    for (set in names(run_states[[1L]]$probs)) {
+    for (set in names(run_states[[1L]]$values)) {
       set_states <- run_states[vapply(
         run_states,
-        function(state) set %in% names(state$probs),
+        function(state) set %in% names(state$values),
         logical(1)
       )]
-      set_probabilities <- lapply(set_states, function(state) state$probs[[set]]$prob)
-      pooled_prob <- .workflow_mean_prob(set_probabilities)
-      truth <- set_states[[1L]]$probs[[set]]$truth
+      set_probabilities <- lapply(set_states, function(state) state$values[[set]]$value)
+      pooled_prob <- adapter$pool(set_probabilities)
+      truth <- set_states[[1L]]$values[[set]]$truth
       calibrated_prob <- rep(NA_real_, length(pooled_prob))
       calibrated_states <- vector("list", length(set_states))
       set_calibration_success <- calibration_success
@@ -2317,7 +2137,7 @@ run_workflow <- function(spec, train, validation, test = NULL,
           for (state_index in seq_along(set_states)) {
             calibrated_states[[state_index]] <- .workflow_calibrated(
               calibrator,
-              set_states[[state_index]]$probs[[set]]$prob
+              set_states[[state_index]]$values[[set]]$value
             )
           }
           state_failures <- vapply(
@@ -2352,7 +2172,7 @@ run_workflow <- function(spec, train, validation, test = NULL,
         raw = list(
           pooled = pooled_prob,
           threshold = model_thresholds$raw,
-          states = lapply(set_states, function(state) state$probs[[set]]$prob)
+          states = lapply(set_states, function(state) state$values[[set]]$value)
         )
       )
       if (set_calibration_success) {
@@ -2378,7 +2198,7 @@ run_workflow <- function(spec, train, validation, test = NULL,
           .workflow_pool_metric_rows(lapply(seq_along(set_states), function(index) {
             .workflow_metrics(
               path$states[[index]],
-              set_states[[index]]$probs[[set]]$truth,
+              set_states[[index]]$values[[set]]$truth,
               path$threshold,
               spec,
               key,
@@ -2392,13 +2212,13 @@ run_workflow <- function(spec, train, validation, test = NULL,
             tryCatch(
               calc_ci(
                 path$states[[index]],
-                set_states[[index]]$probs[[set]]$truth,
+                set_states[[index]]$values[[set]]$truth,
                 method = "bootstrap",
                 R = as.integer(ci_R),
                 seed = spec$seed + index - 1L,
                 threshold = path$threshold,
                 positive = spec$positive,
-                metrics = .workflow_metric_names()
+                metrics = .workflow_metric_names(spec)
               ),
               error = function(e) NULL
             )

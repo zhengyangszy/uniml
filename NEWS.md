@@ -1,9 +1,31 @@
-# uniml 0.2.0
+# uniml 0.3.0
 
-Multiclass outcomes are now a supported task type. They are modelled at the
-layer level; the full workflow is still binary-only and says so.
+The workflow is now split into a task-type-neutral engine and a per-task-type
+report, so a new outcome shape plugs in through a registered adapter instead of
+editing the pipeline.
+
+## Shared workflow engine
+
+* New `workflow_engine()` performs the half of a workflow that does not depend on
+  the outcome: preparing the data, fitting imputation, preprocessing and feature
+  selection, tuning, training one model per learner and imputation, and predicting
+  the training, validation, test, and external sets. It returns predictions and
+  never metrics.
+* New `register_workflow_adapter()` and `workflow_adapter()` declare how a task
+  type prepares data, builds its mlr3 task, extracts a prediction, pools
+  predictions across imputations, names its metrics, and turns a prediction into
+  metrics. The binary adapter ships with the package.
+* `run_workflow()` is now the binary report on top of that engine; its arguments,
+  return value, and numerical behaviour are unchanged.
+* `run_workflow()` still rejects non-binary outcomes, and the message now says
+  what is genuinely binary about it (thresholds, calibration, DeLong and
+  Hosmer-Lemeshow tests, NRI/IDI, decision curves) and points at
+  `workflow_engine()` instead of leaving the reader with a dead end.
 
 ## Multiclass
+
+Multiclass outcomes are a supported task type. They are modelled at the layer
+level; the full workflow is still binary-only and says so.
 
 * `uniml_spec(task_type = "multiclass", outcome = "y")` no longer needs a
   `positive` class, and passing one is an error: a positive class only exists
@@ -50,8 +72,8 @@ added without editing the callers.
   `best_model_metric` rather than falling back to the binary one.
 * The workflow no longer calls the binary metric calculator from two places.
   `.workflow_metric_values()` is the single point that turns a prediction into a
-  metric row, and it names itself when a task type has no adapter, so the next
-  task type has one obvious place to plug in instead of editing the fold loop.
+  metric row, and it goes through the task type's adapter, so the next task type
+  has one obvious place to plug in instead of editing the fold loop.
 
 # uniml 0.1.0
 

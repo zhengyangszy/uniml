@@ -294,6 +294,10 @@ table(checklist$status)
 - `vignette("uniml-workflow")`：完整工作流（含外部验证、NRI/IDI、阈值、TRIPOD 自检）
 - `vignette("uniml-shap")`：SHAP 解释与可视化
 - `vignette("uniml-atomic")`：逐层单独使用各函数
+- `vignette("uniml-realdata")`：**真实数据**——用 `pROC::aSAH`（113 例蛛网膜下腔出血
+  的公开队列）跑完整流程。演示 `gos6` 必须排除（它是结局的原始五分类）、bootstrap
+  分布退化时比值的区间给 `NA` 而不是编数、以及 Hosmer–Lemeshow 统计量无法定义时
+  返回 `not_estimable` 而不是 `NaN`。
 
 ## 开发状态
 

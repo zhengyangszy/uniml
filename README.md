@@ -390,7 +390,15 @@ preprocessor, calibrators) for `predict_uniml()` on new data.
 vignette("uniml-atomic", package = "uniml")
 vignette("uniml-workflow", package = "uniml")
 vignette("uniml-shap", package = "uniml")
+vignette("uniml-realdata", package = "uniml")
 ```
+
+`uniml-realdata` runs the whole workflow on `pROC::aSAH`, a published cohort of
+113 patients with subarachnoid haemorrhage, and shows what the reporting layer
+does when the data is small: the outcome is a collapse of `gos6`, so that column
+has to be excluded; ratios whose bootstrap distribution is degenerate come back
+as `NA` with a reason; and a Hosmer-Lemeshow statistic that cannot be defined
+says so instead of returning `NaN`.
 
 ## Development status
 

@@ -135,6 +135,9 @@ to end; `multiclass` and `survival` are registered as placeholders and raise a
   `right = FALSE` while `ResourceSelection::hoslem.test()` uses `right = TRUE`,
   so `hl_test()` returned a different statistic when `ResourceSelection` was not
   installed. The fallback now reproduces the package result exactly.
+* `hl_test()` no longer returns `NaN`. When a group's probabilities are all 0 or
+  all 1 the expected cell is empty and the statistic is not defined; the result
+  is now `NA` with `method = "not_estimable"` and a message, on both paths.
 
 ## Verification
 
@@ -145,6 +148,10 @@ to end; `multiclass` and `survival` are registered as placeholders and raise a
   isotonic calibration to `stats::isoreg()`; net benefit to the decision-curve
   formula; DeLong AUCs to `calc_metrics()`; and the Hosmer-Lemeshow fallback to
   `ResourceSelection`.
+* Added `vignette("uniml-realdata")`, an end-to-end run on `pROC::aSAH`
+  (113 patients, 12-month Glasgow outcome) rather than on the simulated cohort,
+  including the `gos6` leakage guard and the reporting behaviour when a statistic
+  cannot be estimated.
 
 ## Workflow
 

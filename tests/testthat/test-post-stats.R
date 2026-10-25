@@ -220,6 +220,26 @@ test_that("hl_test() returns grouped goodness-of-fit results", {
   expect_identical(single_class$method, "insufficient_data")
 })
 
+test_that("hl_test() reports an undefined statistic instead of NaN", {
+  # A group whose probabilities are all 0 (or all 1) leaves an expected cell at
+  # zero, which is the same condition that breaks ResourceSelection's statistic.
+  # Both the package path and the internal fallback must say so.
+  probs <- c(rep(0, 10), rep(0.5, 10), rep(0.9, 10))
+  labels <- rep(c(0, 1), 15)
+
+  grouped <- suppressWarnings(hl_test(probs, labels, g = 3))
+  fallback <- suppressWarnings(uniml:::.custom_hl(probs, labels, 3))
+
+  expect_true(is.na(grouped$statistic))
+  expect_true(is.na(grouped$p_value))
+  expect_identical(grouped$method, "not_estimable")
+  expect_match(grouped$message, "undefined")
+
+  expect_true(is.na(fallback$statistic))
+  expect_identical(fallback$method, "not_estimable")
+  expect_identical(fallback$message, grouped$message)
+})
+
 test_that("dca() calculates model and baseline net benefit", {
   probs <- c(0.1, 0.4, 0.6, 0.9)
   labels <- c(0, 0, 1, 1)

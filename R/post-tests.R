@@ -176,6 +176,14 @@ delong_test <- function(pred_list, labels, positive = NULL) {
   )
 }
 
+.hl_undefined_message <- function() {
+  paste(
+    "The Hosmer-Lemeshow statistic is undefined because at least one group has",
+    "no expected events or no expected non-events.",
+    "Use fewer groups (a smaller `g`)."
+  )
+}
+
 .hl_group_count <- function(n, g, n_unique) {
   adaptive <- if (n < 100L) {
     min(g, 5L)
@@ -221,6 +229,25 @@ delong_test <- function(pred_list, labels, positive = NULL) {
     sort(unique(group)),
     function(group_id) which(group == group_id)
   )
+  # A group whose probabilities are all 0 or all 1 leaves an expected cell at
+  # zero, which is the same condition that makes ResourceSelection's statistic
+  # undefined. Both paths must agree on that verdict.
+  degenerate <- any(vapply(groups, function(index) {
+    prob <- probs[index]
+    all(prob == 0) || all(prob == 1)
+  }, logical(1)))
+  if (degenerate) {
+    return(list(
+      statistic = NA_real_,
+      df = NA_integer_,
+      p_value = NA_real_,
+      n = length(event),
+      n_groups = length(groups),
+      method = "not_estimable",
+      groups = NULL,
+      message = .hl_undefined_message()
+    ))
+  }
   stats <- lapply(seq_along(groups), function(i) {
     index <- groups[[i]]
     prob <- pmin(pmax(probs[index], 1e-10), 1 - 1e-10)
@@ -256,6 +283,18 @@ delong_test <- function(pred_list, labels, positive = NULL) {
   }
   statistic <- sum(group_stats$chi_sq)
   df <- nrow(group_stats) - 2L
+  if (!is.finite(statistic)) {
+    return(list(
+      statistic = NA_real_,
+      df = as.integer(df),
+      p_value = NA_real_,
+      n = length(event),
+      n_groups = nrow(group_stats),
+      method = "not_estimable",
+      groups = group_stats,
+      message = .hl_undefined_message()
+    ))
+  }
   list(
     statistic = statistic,
     df = as.integer(df),
@@ -338,8 +377,21 @@ hl_test <- function(probs, labels, g = 10L, positive = NULL) {
     )
   }
   if (!is.null(package_result)) {
+    statistic <- as.numeric(package_result$statistic)
+    if (!is.finite(statistic)) {
+      return(list(
+        statistic = NA_real_,
+        df = as.integer(package_result$parameter),
+        p_value = NA_real_,
+        n = as.integer(cleaned$n),
+        n_groups = group_count,
+        method = "not_estimable",
+        groups = as.data.frame(package_result$observed),
+        message = .hl_undefined_message()
+      ))
+    }
     return(list(
-      statistic = as.numeric(package_result$statistic),
+      statistic = statistic,
       df = as.integer(package_result$parameter),
       p_value = as.numeric(package_result$p.value),
       n = as.integer(cleaned$n),

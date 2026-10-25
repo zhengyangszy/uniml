@@ -145,7 +145,8 @@
 #'
 #' @param x An `uniml_result` object or a metric data frame.
 #' @param select_on Comparison set: `"auto"`, `"validation"`, or `"test"`.
-#'   `"auto"` uses the test set when present and otherwise validation.
+#'   `"auto"` uses the validation set when present and otherwise the test set, so
+#'   the test set stays reporting-only whenever a validation set exists.
 #' @param best_model_metric Metric used for ranking, or `"composite"`.
 #'
 #' @return A data frame with model scores, ranks, metric, and comparison set.

@@ -1,0 +1,330 @@
+---
+title: "A real cohort: subarachnoid haemorrhage"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{A real cohort: subarachnoid haemorrhage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 110
+)
+```
+
+## Why this vignette
+
+Every other example in this package uses a cohort that `data-raw/` simulates.
+That makes the code reproducible, but it says nothing about how the workflow
+behaves on real data, where probabilities are lumpy, groups can be empty, and a
+hundred and thirteen patients is all you have.
+
+This vignette runs the same workflow on a published clinical data set that ships
+with `pROC`, so the numbers below are real and you can check them against the
+source paper.
+
+## The data
+
+`pROC::aSAH` contains 113 patients with aneurysmal subarachnoid haemorrhage. The
+outcome is the dichotomised Glasgow Outcome Scale at six months, and the
+candidate predictors are two blood markers (`s100b`, `ndka`) plus age, sex, and
+the World Federation of Neurosurgical Societies grade.
+
+```{r data}
+asah <- pROC::aSAH
+str(asah[, c("outcome", "gos6", "gender", "age", "wfns", "s100b", "ndka")])
+table(asah$outcome)
+```
+
+Note `gos6`: it is the five-level version of the outcome, and `outcome` is
+exactly `gos6` collapsed to two groups.
+
+```{r leakage}
+table(asah$gos6, asah$outcome)
+```
+
+Leaving `gos6` in the predictor set would let the model read the answer off the
+answer sheet. It goes in `exclude`, and the specification refuses to use it:
+
+```{r spec}
+library(uniml)
+
+spec <- uniml_spec(
+  task_type = "binary",
+  outcome = "outcome",
+  positive = "Poor",
+  exclude = "gos6"
+)
+spec <- set_preprocess(
+  spec,
+  impute = "median_mode",
+  scale = "zscore",
+  encode = "onehot"
+)
+spec <- set_feature_selection(
+  spec,
+  methods = "univariate",
+  p_threshold = 0.2
+)
+spec <- set_learners(spec, c("lr", "cart"), tune = FALSE)
+spec <- set_tuning(spec, folds = 5, repeats = 5, evals = 4, metric = "auc", seed = 123)
+spec <- set_evaluation(
+  spec,
+  ci = "bootstrap",
+  calibration = "platt",
+  threshold_method = "youden",
+  select_on = "validation"
+)
+spec <- set_leakage_policy(spec, mode = "strict_in")
+spec <- set_explain(spec, model = "none", plots = character())
+spec
+```
+
+`strict_in` re-runs the univariate selection inside every fold, so the
+cross-validated numbers do not profit from having seen the whole training set.
+With five predictors that costs almost nothing.
+
+## Split and run
+
+Seventy per cent of the cohort develops the models, thirty per cent is held out
+for the whole workflow.
+
+```{r split}
+split <- make_split(
+  as_uniml_data(asah, spec),
+  prop = c(0.7, 0.3),
+  stratify = TRUE,
+  seed = 123
+)
+
+data.frame(
+  set = c("train", "validation"),
+  n = c(nrow(split$train$data), nrow(split$validation$data)),
+  poor_outcome = c(
+    sum(split$train$data$outcome == "Poor"),
+    sum(split$validation$data$outcome == "Poor")
+  )
+)
+```
+
+```{r run}
+result <- suppressWarnings(run_workflow(
+  spec,
+  train = split$train$data,
+  validation = split$validation$data,
+  ci_R = 200
+))
+result
+```
+
+Nothing was dropped, downgraded, or silently skipped:
+
+```{r failures}
+result$meta$failures
+```
+
+The chunks above suppress warnings. The ones that fired are expected on data
+this small: bootstrap resamples in which the positive likelihood ratio and the
+diagnostic odds ratio are infinite, and a Platt fit on tree probabilities that
+are exactly 0 or 1. Neither is an error, and both are visible in the output
+below — the affected intervals come back as `NA` rather than as a number
+invented by the package.
+
+## What the cross-validation says
+
+Repeated cross-validation on the 80 development patients is the most stable
+estimate available here.
+
+```{r cv}
+cv_auc <- subset(result$cv$summary, metric == "auc")
+cv_auc[, c("model", "mean", "sd", "lower", "upper", "n")]
+```
+
+`n = 5` is the number of repeats: each repeat averages five folds, and the
+interval summarises spread across those five repeat means. It is narrower than
+the sampling uncertainty of the AUC itself, so do not read it as a confidence
+interval for new patients — compare it with the bootstrap interval on the
+validation patients further down, which is much wider.
+
+## Validation performance
+
+The held-out set has 33 patients and 12 events.
+
+```{r metrics}
+validation <- subset(
+  result$metrics,
+  set == "validation",
+  select = c("model", "probability", "auc", "brier", "sensitivity",
+             "specificity", "ppv", "npv")
+)
+validation
+```
+
+Bootstrap intervals around the same numbers:
+
+```{r ci}
+ci <- subset(
+  result$ci,
+  set == "validation" & metric %in% c("auc", "brier"),
+  select = c("model", "probability", "metric", "mean", "lower", "upper")
+)
+ci
+```
+
+The logistic model calibrates better than the tree: Platt scaling cuts its
+validation Brier score by about 0.019, and `cart`'s by about 0.014. Reads of a
+single 33-patient split should be treated as illustrative; the cross-validated
+table above is what to quote.
+
+Two of the ratios cannot be given an interval on this data, and the package says
+so rather than inventing bounds:
+
+```{r ci-undefined}
+subset(
+  result$ci,
+  set == "validation" & metric %in% c("plr", "dor"),
+  select = c("model", "metric", "mean", "lower", "upper", "n_effective")
+)
+```
+
+`lr` calls every validation patient at low risk, so its specificity is exactly 1
+and the positive likelihood ratio is infinite in all 200 resamples. The interval
+comes back as `NA` with `n_effective = 0`. `cart` keeps a finite ratio and
+therefore a finite interval.
+
+## Which model does the package rank first?
+
+`rank_models()` scores each model on the comparison set (validation by default)
+using the calibrated probabilities, averaging AUC, sensitivity, specificity, F2,
+balanced accuracy, and Youden's index.
+
+```{r ranking}
+result$ranking[, c("model", "score", "rank", "metric", "set")]
+```
+
+`cart` comes first. It has the lower AUC but the much higher sensitivity at the
+Youden threshold, and the composite weights the two equally. That is a choice,
+not a law: pass `best_model_metric = "auc"` to `rank_models()` if discrimination
+is all you care about, and pick deliberately rather than by default.
+
+## Figures
+
+```{r roc, fig.cap = "ROC curves on the held-out validation patients."}
+plot_roc(result, set = "validation")
+```
+
+```{r calibration, fig.cap = "Calibration on the validation set, before and after Platt scaling."}
+plot_calibration(result, set = "validation")
+```
+
+```{r dca, fig.cap = "Decision curve analysis."}
+plot_dca(result)
+```
+
+```{r confusion, fig.cap = "Confusion matrix at the out-of-fold Youden threshold."}
+plot_confusion(result, models = "best")
+```
+
+## Thresholds
+
+The classification threshold comes from out-of-fold training predictions, never
+from the validation patients.
+
+```{r thresholds}
+as.data.frame(result$meta$thresholds)
+```
+
+## Do the two models differ?
+
+```{r delong}
+result$tests$delong$summary
+result$tests$delong$formatted
+```
+
+The DeLong test compares AUCs on the same patients and accounts for the
+correlation between the two prediction vectors. With 12 events it has very
+little power, so a non-significant p value means "not shown to differ", not
+"equivalent".
+
+## Calibration, for the record
+
+```{r hl}
+for (track in c("raw", "calibrated")) {
+  for (model in c("lr", "cart")) {
+    item <- result$tests$hl[[track]][[model]]
+    cat(sprintf(
+      "%-10s %-5s statistic = %s, df = %s, p = %s (%s)\n",
+      track, model,
+      format(round(item$statistic, 3)), format(item$df),
+      format(round(item$p_value, 3)), item$method
+    ))
+  }
+}
+```
+
+`cart` reports `not_estimable` on the raw track: the tree puts a group of
+patients at a probability of exactly 1, which leaves the expected non-event count
+at zero and the Hosmer-Lemeshow statistic undefined. The package says so with a
+message instead of returning `NaN`; the fix in practice is fewer groups or more
+patients. After Platt scaling the same model has spread-out probabilities and the
+statistic becomes estimable, which is a fair summary of what calibration does.
+
+## Reclassification
+
+```{r nri}
+subset(
+  result$tests$nri_idi,
+  set == "validation",
+  select = c("model", "reference", "nri", "nri_events", "nri_nonevents", "idi")
+)
+```
+
+NRI and IDI are computed against the reference model (the best training AUC,
+`cart` here). The result is worth reading carefully: `lr` reclassifies none of the
+events and 71% of the non-events downward, so its net reclassification is
+negative even though its AUC on the same patients is higher. With twelve events,
+neither number is evidence of anything — but the disagreement is exactly why
+AUC alone is a poor basis for choosing a risk model.
+
+## Reporting checklist
+
+```{r tripod}
+checklist <- tripod_ai_check(result)
+table(checklist$status)
+subset(checklist, status != "reported", select = c("domain", "status"))
+```
+
+## Export
+
+```{r export}
+out <- tempfile("uniml-asah-")
+exported <- export_results(result, dir = out, include_plots = FALSE)
+basename(exported$files)
+```
+
+## What this vignette does and does not show
+
+It shows that the workflow runs end to end on real, complete clinical data, that
+the leakage guard is not hypothetical (`gos6` would have made every model look
+brilliant), and that the reporting layer degrades honestly when the data is too
+small for a statistic to be defined.
+
+It does not show a validated model. A hundred and thirteen patients cannot
+support one, and the package is not a substitute for a prospective validation
+study. If you report from a cohort this size, report the cross-validated
+estimates with their intervals, say how wide they are, and do not select between
+models on thirty-three patients.
+
+## References
+
+Sabbagh C, et al. (2005). Protein S100B and neuron-specific enolase in
+subarachnoid haemorrhage. The `aSAH` data set is distributed with the `pROC`
+package and used here under its licence.
+
+See `system.file("REFERENCES.md", package = "uniml")` for the methods that each
+layer implements.

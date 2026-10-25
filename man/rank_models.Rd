@@ -10,7 +10,8 @@ rank_models(x, select_on = "auto", best_model_metric = "composite")
 \item{x}{An \code{uniml_result} object or a metric data frame.}
 
 \item{select_on}{Comparison set: \code{"auto"}, \code{"validation"}, or \code{"test"}.
-\code{"auto"} uses the test set when present and otherwise validation.}
+\code{"auto"} uses the validation set when present and otherwise the test set, so
+the test set stays reporting-only whenever a validation set exists.}
 
 \item{best_model_metric}{Metric used for ranking, or \code{"composite"}.}
 }

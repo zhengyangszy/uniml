@@ -15,3 +15,7 @@ A \code{uniml_result} object.
 \description{
 Construct a uniml result container
 }
+\examples{
+result <- new_uniml_result()
+class(result)
+}

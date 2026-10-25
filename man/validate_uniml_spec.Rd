@@ -15,3 +15,7 @@ Invisibly returns \code{TRUE} when valid.
 \description{
 Validate a uniml specification
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+validate_uniml_spec(spec)
+}

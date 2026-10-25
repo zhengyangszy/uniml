@@ -15,3 +15,12 @@ Invisibly returns \code{TRUE} when valid.
 \description{
 Validate a uniml split
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+data <- data.frame(
+  y = factor(rep(c("no", "yes"), 10), levels = c("no", "yes")),
+  x1 = stats::rnorm(20)
+)
+split <- make_split(as_uniml_data(data, spec), prop = c(0.5, 0.5), seed = 1)
+validate_uniml_split(split)
+}

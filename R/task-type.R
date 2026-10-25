@@ -54,6 +54,8 @@ task_type_spec <- function(id, mlr3_task = NULL, outcome_class = NULL,
 #' @param x A `uniml_task_type` object.
 #'
 #' @return Invisibly returns `TRUE` when valid.
+#' @examples
+#' validate_uniml_task_type(get_task_type("binary"))
 #' @export
 validate_uniml_task_type <- function(x) {
   if (!inherits(x, "uniml_task_type")) {

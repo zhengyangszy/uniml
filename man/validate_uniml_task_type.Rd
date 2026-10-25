@@ -15,3 +15,6 @@ Invisibly returns \code{TRUE} when valid.
 \description{
 Validate a task-type descriptor
 }
+\examples{
+validate_uniml_task_type(get_task_type("binary"))
+}

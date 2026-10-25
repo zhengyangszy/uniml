@@ -362,6 +362,9 @@ uniml_spec <- function(task_type, outcome, positive, id = NULL, exclude = NULL,
 #' @param x A `uniml_spec` object.
 #'
 #' @return Invisibly returns `TRUE` when valid.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' validate_uniml_spec(spec)
 #' @export
 validate_uniml_spec <- function(x) {
   if (!inherits(x, "uniml_spec")) {
@@ -765,6 +768,13 @@ as_uniml_data <- function(data, spec) {
 #' @param x A `uniml_data` object.
 #'
 #' @return Invisibly returns `TRUE` when valid.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' data <- data.frame(
+#'   y = factor(c("no", "yes"), levels = c("no", "yes")),
+#'   x1 = c(0.1, 0.2)
+#' )
+#' validate_uniml_data(as_uniml_data(data, spec))
 #' @export
 validate_uniml_data <- function(x) {
   if (!inherits(x, "uniml_data")) {
@@ -975,6 +985,14 @@ make_split <- function(data, prop, stratify = FALSE, seed = 123) {
 #' @param x A `uniml_split` object.
 #'
 #' @return Invisibly returns `TRUE` when valid.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' data <- data.frame(
+#'   y = factor(rep(c("no", "yes"), 10), levels = c("no", "yes")),
+#'   x1 = stats::rnorm(20)
+#' )
+#' split <- make_split(as_uniml_data(data, spec), prop = c(0.5, 0.5), seed = 1)
+#' validate_uniml_split(split)
 #' @export
 validate_uniml_split <- function(x) {
   if (!inherits(x, "uniml_split")) {
@@ -1019,6 +1037,9 @@ print.uniml_split <- function(x, ...) {
 #' @param ... Named result components.
 #'
 #' @return A `uniml_result` object.
+#' @examples
+#' result <- new_uniml_result()
+#' class(result)
 #' @export
 new_uniml_result <- function(...) {
   fields <- list(
@@ -1060,6 +1081,8 @@ new_uniml_result <- function(...) {
 #' @param x A `uniml_result` object.
 #'
 #' @return Invisibly returns `TRUE` when valid.
+#' @examples
+#' validate_uniml_result(assemble_result())
 #' @export
 validate_uniml_result <- function(x) {
   if (!inherits(x, "uniml_result")) {

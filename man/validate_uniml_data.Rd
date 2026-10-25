@@ -15,3 +15,11 @@ Invisibly returns \code{TRUE} when valid.
 \description{
 Validate a uniml data object
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+data <- data.frame(
+  y = factor(c("no", "yes"), levels = c("no", "yes")),
+  x1 = c(0.1, 0.2)
+)
+validate_uniml_data(as_uniml_data(data, spec))
+}

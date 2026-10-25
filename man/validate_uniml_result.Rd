@@ -15,3 +15,6 @@ Invisibly returns \code{TRUE} when valid.
 \description{
 Validate a uniml result
 }
+\examples{
+validate_uniml_result(assemble_result())
+}

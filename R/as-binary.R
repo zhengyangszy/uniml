@@ -1,5 +1,34 @@
 # mlr3 prediction bridge ------------------------------------------------------
 
+# mlr3 orders the probability columns so that the positive class comes first
+# (`task$positive` is `task$class_names[[1L]]`), and a prediction does not
+# always keep a reference to its task. Ordering is therefore resolved here once
+# so that every caller picks the same class.
+.prediction_positive_class <- function(x, positive = NULL) {
+  classes <- colnames(x$prob)
+  if (is.null(classes) || length(classes) == 0L) {
+    .abort("The prediction object does not contain named probability columns.")
+  }
+  if (length(classes) == 1L) {
+    return(classes[[1L]])
+  }
+  if (!is.null(positive)) {
+    label <- as.character(positive)
+    if (length(label) != 1L || !label %in% classes) {
+      .abort(sprintf(
+        "`positive` must be one of: %s.",
+        paste(classes, collapse = ", ")
+      ))
+    }
+    return(label)
+  }
+  task_positive <- if (!is.null(x$task)) x$task$positive else NULL
+  if (!is.null(task_positive) && task_positive %in% classes) {
+    return(task_positive)
+  }
+  classes[[1L]]
+}
+
 #' Convert an mlr3 prediction into a `uniml_binary` object
 #'
 #' The plotting and evaluation helpers accept a `uniml_binary` object. This
@@ -8,7 +37,9 @@
 #' result.
 #'
 #' @param x An [mlr3::PredictionClassif] with `predict_type = "prob"`.
-#' @param positive Positive class label. Defaults to the last class level.
+#' @param positive Positive class label. Defaults to the positive class of the
+#'   mlr3 task the prediction was made for, or to the first probability column
+#'   when the prediction does not carry its task.
 #'
 #' @return A `uniml_binary` object accepted by the `uniml` plotting functions.
 #' @export
@@ -32,14 +63,7 @@ as_uniml_binary <- function(x, positive = NULL) {
   if (is.null(prob) || ncol(prob) < 2L) {
     .abort("`x` must contain probabilities; set `predict_type = \"prob\"`.")
   }
-  classes <- colnames(prob)
-  label <- if (is.null(positive)) classes[[length(classes)]] else as.character(positive)
-  if (!label %in% classes) {
-    .abort(sprintf(
-      "`positive` must be one of: %s.",
-      paste(classes, collapse = ", ")
-    ))
-  }
+  label <- .prediction_positive_class(x, positive = positive)
   structure(
     list(
       prob = as.numeric(prob[, label]),

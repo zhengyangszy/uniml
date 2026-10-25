@@ -9,7 +9,9 @@ as_uniml_binary(x, positive = NULL)
 \arguments{
 \item{x}{An \link[mlr3:PredictionClassif]{mlr3::PredictionClassif} with \code{predict_type = "prob"}.}
 
-\item{positive}{Positive class label. Defaults to the last class level.}
+\item{positive}{Positive class label. Defaults to the positive class of the
+mlr3 task the prediction was made for, or to the first probability column
+when the prediction does not carry its task.}
 }
 \value{
 A \code{uniml_binary} object accepted by the \code{uniml} plotting functions.

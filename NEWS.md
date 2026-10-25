@@ -123,6 +123,29 @@ to end; `multiclass` and `survival` are registered as placeholders and raise a
   `mlr3extralearners` and pass `"classif.lightgbm"` (or `"classif.randomForest"`,
   `"classif.gbm"`) directly.
 
+* Bug fix: `calc_metrics()`, `as_uniml_binary()`, and every `plot_*()` method
+  that accepts an mlr3 `PredictionClassif` read the positive class from the last
+  probability column. mlr3 puts the positive class in the *first* column, so the
+  confusion-matrix metrics (sensitivity, specificity, PPV, NPV, F1, F2, PR-AUC)
+  were computed for the negative class while the ranking-based metrics looked
+  correct. The class is now taken from the mlr3 task when the prediction carries
+  it and from the first probability column otherwise; an explicit `positive`
+  still overrides both.
+* Bug fix: the internal Hosmer-Lemeshow fallback grouped probabilities with
+  `right = FALSE` while `ResourceSelection::hoslem.test()` uses `right = TRUE`,
+  so `hl_test()` returned a different statistic when `ResourceSelection` was not
+  installed. The fallback now reproduces the package result exactly.
+
+## Verification
+
+* Added `tests/testthat/test-consistency.R`, which pins the package to
+  independent implementations: ROC AUC to `mlr3measures`, `pROC`, and the
+  Mann-Whitney U statistic; PR-AUC to `PRROC`; the 2x2 metrics to a direct
+  recomputation; Platt calibration to `stats::glm()` on the logit scale;
+  isotonic calibration to `stats::isoreg()`; net benefit to the decision-curve
+  formula; DeLong AUCs to `calc_metrics()`; and the Hosmer-Lemeshow fallback to
+  `ResourceSelection`.
+
 ## Workflow
 
 * `run_workflow()` chains the layers with `strict_in`, `strict_out`, or `custom`

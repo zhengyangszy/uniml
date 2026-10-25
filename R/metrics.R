@@ -324,7 +324,10 @@
 #' @param x A probability vector, mlr3 prediction, or `uniml_binary` object.
 #' @param truth Optional binary truth vector.
 #' @param threshold Optional fixed classification threshold.
-#' @param positive Positive class label.
+#' @param positive Positive class label. For an mlr3 `PredictionClassif` the
+#'   default is the positive class of the task the prediction was made for,
+#'   falling back to the first probability column when the prediction does not
+#'   carry its task.
 #' @param metrics `"all"` or a character vector of metric names.
 #' @param threshold_method Threshold method used when `threshold` is `NULL`.
 #' @param cost Named false-positive and false-negative cost vector.
@@ -382,24 +385,11 @@ calc_metrics.PredictionClassif <- function(x, threshold = NULL,
                                            threshold_method = "fixed",
                                            cost = c(fp = 1, fn = 1),
                                            fixed_threshold = 0.5, ...) {
-  if (is.null(positive)) {
-    if (!is.null(x$task) && !is.null(x$task$positive)) {
-      positive <- x$task$positive
-    } else if (!is.null(colnames(x$prob)) && ncol(x$prob) >= 2L) {
-      positive <- colnames(x$prob)[ncol(x$prob)]
-    }
-  }
   if (is.null(x$prob) || ncol(x$prob) == 0L) {
     .abort("The prediction object does not contain probabilities.")
   }
-  prob <- if (ncol(x$prob) == 1L) {
-    x$prob[, 1L]
-  } else {
-    if (is.null(positive) || !positive %in% colnames(x$prob)) {
-      .abort("`positive` must identify a probability column.")
-    }
-    x$prob[, positive]
-  }
+  positive <- .prediction_positive_class(x, positive = positive)
+  prob <- x$prob[, positive]
   .calc_binary_metrics(
     probs = prob,
     truth = x$truth,

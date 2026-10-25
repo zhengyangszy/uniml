@@ -536,7 +536,10 @@
   } else if (ncol(probabilities) == 1L) {
     colnames(probabilities)[1L]
   } else {
-    colnames(probabilities)[ncol(probabilities)]
+    .abort(sprintf(
+      "The learner returned no probability column for the positive class '%s'.",
+      as.character(positive)
+    ))
   }
   list(prediction = prediction, prob = as.numeric(probabilities[, column]))
 }

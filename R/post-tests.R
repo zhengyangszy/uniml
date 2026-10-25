@@ -214,7 +214,7 @@ delong_test <- function(pred_list, labels, positive = NULL) {
     probs,
     breaks = breaks,
     include.lowest = TRUE,
-    right = FALSE,
+    right = TRUE,
     labels = FALSE
   )
   groups <- lapply(

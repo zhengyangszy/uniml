@@ -55,7 +55,10 @@ calc_metrics(x, ...)
 
 \item{threshold}{Optional fixed classification threshold.}
 
-\item{positive}{Positive class label.}
+\item{positive}{Positive class label. For an mlr3 \code{PredictionClassif} the
+default is the positive class of the task the prediction was made for,
+falling back to the first probability column when the prediction does not
+carry its task.}
 
 \item{metrics}{\code{"all"} or a character vector of metric names.}
 

@@ -57,3 +57,13 @@ Updated \code{uniml_spec}.
 \description{
 Set evaluation options
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_evaluation(
+  spec,
+  ci = "bootstrap",
+  calibration = "platt",
+  select_on = "validation"
+)
+spec
+}

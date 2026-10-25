@@ -17,3 +17,12 @@ A \code{uniml_data} object.
 \description{
 Convert data to a uniml data object
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes", id = "id")
+data <- data.frame(
+  id = 1:4,
+  y = factor(c("no", "no", "yes", "yes"), levels = c("no", "yes")),
+  x1 = c(0.1, 0.4, 0.6, 0.9)
+)
+as_uniml_data(data, spec)
+}

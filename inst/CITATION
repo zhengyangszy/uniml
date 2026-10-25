@@ -1,0 +1,21 @@
+citHeader("To cite uniml in publications use:")
+
+bibentry(
+  bibtype = "Manual",
+  title = "uniml: A Unified Predictive Modeling Toolkit for Binary Classification",
+  author = person(
+    given = "Steve",
+    family = "Shi",
+    email = "19943405117@163.com"
+  ),
+  year = "2026",
+  note = "R package version 0.0.0.9000",
+  url = "https://github.com/zhengyangszy/uniml"
+)
+
+citFooter(
+  paste(
+    "The methods implemented by the package are listed, with their original",
+    "references, in inst/REFERENCES.md."
+  )
+)

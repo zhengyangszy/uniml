@@ -36,3 +36,12 @@ A \code{uniml_spec} object.
 The specification is the top-level configuration object used by uniml.
 It stores variable roles and the default settings for each later stage.
 }
+\examples{
+spec <- uniml_spec(
+  task_type = "binary",
+  outcome = "died",
+  positive = "yes",
+  id = "id"
+)
+spec
+}

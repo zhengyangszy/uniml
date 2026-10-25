@@ -250,6 +250,12 @@ calc_metrics.default <- function(x, ...) {
 #' Van Calster B, McLernon DJ, van Smeden M, et al. (2019). Calibration: the
 #' Achilles heel of predictive analytics. *BMC Medicine*, 17, 230.
 #' doi:10.1186/s12916-019-1466-7
+#' @examples
+#' probs <- c(0.05, 0.20, 0.35, 0.55, 0.70, 0.90)
+#' labels <- c(0, 0, 0, 1, 1, 1)
+#' calibrated <- calibrate_probabilities(probs, labels = labels, method = "platt")
+#' calibrated$method
+#' calibrated$calibrated
 #' @export
 calibrate_probabilities <- function(x, ...) {
   UseMethod("calibrate_probabilities")
@@ -285,6 +291,11 @@ calibrate_probabilities.uniml_binary <- function(x, ...) {
 #' Vickers AJ, van Calster B, Steyerberg EW (2016). Net benefit approaches to
 #' the evaluation of prediction models, molecular markers, and diagnostic tests.
 #' *BMJ*, 352, i6. doi:10.1136/bmj.i6
+#' @examples
+#' probs <- c(0.05, 0.20, 0.35, 0.55, 0.70, 0.90)
+#' labels <- c(0, 0, 0, 1, 1, 1)
+#' curve <- dca(probs, labels = labels)
+#' head(curve)
 #' @export
 dca <- function(x, ...) {
   UseMethod("dca")
@@ -326,6 +337,12 @@ dca.uniml_binary <- function(x, ...) {
 #'
 #' Molnar C (2022). *Interpretable Machine Learning*, 2nd edition.
 #' https://christophm.github.io/interpretable-ml-book/
+#' @examples
+#' \dontrun{
+#' result <- run_workflow(spec, train, validation)
+#' explained <- explain_shap(result, model = "best", n_explain = 100)
+#' plot_shap_importance(explained)
+#' }
 #' @export
 explain_shap <- function(x, ...) {
   UseMethod("explain_shap")

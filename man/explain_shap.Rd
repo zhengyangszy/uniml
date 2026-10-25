@@ -96,6 +96,13 @@ The method return value.
 S3 generic that dispatches SHAP computation by task type. Method bodies are
 added in later milestones.
 }
+\examples{
+\dontrun{
+result <- run_workflow(spec, train, validation)
+explained <- explain_shap(result, model = "best", n_explain = 100)
+plot_shap_importance(explained)
+}
+}
 \references{
 Lundberg SM, Lee SI (2017). A unified approach to interpreting model
 predictions. \emph{Advances in Neural Information Processing Systems}, 30.

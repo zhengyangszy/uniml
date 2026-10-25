@@ -54,3 +54,12 @@ Updated \code{uniml_spec}.
 \description{
 Set feature-selection options
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_feature_selection(
+  spec,
+  methods = c("univariate", "lasso"),
+  combine = "intersect"
+)
+spec$selection$methods
+}

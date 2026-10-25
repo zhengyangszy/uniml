@@ -31,3 +31,8 @@ Updated \code{uniml_spec}.
 \description{
 Set explanation options
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_explain(spec, model = "best", plots = c("importance", "beeswarm"))
+spec
+}

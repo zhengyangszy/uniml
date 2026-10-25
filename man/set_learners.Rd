@@ -23,3 +23,8 @@ Updated \code{uniml_spec}.
 \description{
 Set learners
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_learners(spec, c("lr", "cart"), tune = FALSE)
+spec
+}

@@ -44,6 +44,13 @@ The method return value.
 S3 generic that dispatches probability calibration by task type. Method
 bodies are added in later milestones.
 }
+\examples{
+probs <- c(0.05, 0.20, 0.35, 0.55, 0.70, 0.90)
+labels <- c(0, 0, 0, 1, 1, 1)
+calibrated <- calibrate_probabilities(probs, labels = labels, method = "platt")
+calibrated$method
+calibrated$calibrated
+}
 \references{
 Platt J (1999). Probabilistic outputs for support vector machines and
 comparisons to regularized likelihood methods. In: \emph{Advances in Large Margin

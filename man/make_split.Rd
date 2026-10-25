@@ -21,3 +21,13 @@ A \code{uniml_split} object.
 \description{
 Split uniml data into train, validation, and optional test sets
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+data <- data.frame(
+  y = factor(rep(c("no", "yes"), 20), levels = c("no", "yes")),
+  x1 = stats::rnorm(40)
+)
+split <- make_split(as_uniml_data(data, spec), prop = c(0.7, 0.3),
+  stratify = TRUE, seed = 1)
+names(split)
+}

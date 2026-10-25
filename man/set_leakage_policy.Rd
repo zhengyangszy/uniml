@@ -23,3 +23,13 @@ Updated \code{uniml_spec}.
 \description{
 Set the data-leakage policy
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_leakage_policy(
+  spec,
+  mode = "strict_in",
+  in_cv = c("selection", "balance")
+)
+spec$leakage_policy
+spec$in_cv
+}

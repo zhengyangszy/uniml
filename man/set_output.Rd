@@ -32,3 +32,8 @@ Updated \code{uniml_spec}.
 \description{
 Set output options
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_output(spec, dir = tempfile("uniml-out-"))
+spec
+}

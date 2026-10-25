@@ -53,3 +53,13 @@ Updated \code{uniml_spec}.
 \description{
 Set preprocessing options
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_preprocess(
+  spec,
+  impute = "median_mode",
+  scale = "zscore",
+  encode = "onehot"
+)
+spec$preprocess$impute
+}

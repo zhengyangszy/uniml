@@ -70,3 +70,15 @@ Combines the outputs of the modelling stages into a \code{uniml_result}.
 Missing stages are preserved as \code{NULL}; ranking is attempted whenever
 metric results are available.
 }
+\examples{
+result <- assemble_result(
+  data_info = list(n_train = 100L, outcome = "y"),
+  metrics = data.frame(
+    model = c("lr", "cart"),
+    set = "validation",
+    probability = "raw",
+    auc = c(0.82, 0.78)
+  )
+)
+result
+}

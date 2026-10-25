@@ -265,6 +265,14 @@
 #' @param ... Named specification fields, such as `leakage_policy` or `seed`.
 #'
 #' @return A `uniml_spec` object.
+#' @examples
+#' spec <- uniml_spec(
+#'   task_type = "binary",
+#'   outcome = "died",
+#'   positive = "yes",
+#'   id = "id"
+#' )
+#' spec
 #' @export
 uniml_spec <- function(task_type, outcome, positive, id = NULL, exclude = NULL,
                        labels = NULL, ...) {
@@ -635,6 +643,14 @@ print.uniml_spec <- function(x, ...) {
 #' @param spec A `uniml_spec` object.
 #'
 #' @return A `uniml_data` object.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes", id = "id")
+#' data <- data.frame(
+#'   id = 1:4,
+#'   y = factor(c("no", "no", "yes", "yes"), levels = c("no", "yes")),
+#'   x1 = c(0.1, 0.4, 0.6, 0.9)
+#' )
+#' as_uniml_data(data, spec)
 #' @export
 as_uniml_data <- function(data, spec) {
   validate_uniml_spec(spec)
@@ -868,6 +884,15 @@ print.uniml_data <- function(x, ...) {
 #' @param seed Random seed.
 #'
 #' @return A `uniml_split` object.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' data <- data.frame(
+#'   y = factor(rep(c("no", "yes"), 20), levels = c("no", "yes")),
+#'   x1 = stats::rnorm(40)
+#' )
+#' split <- make_split(as_uniml_data(data, spec), prop = c(0.7, 0.3),
+#'   stratify = TRUE, seed = 1)
+#' names(split)
 #' @export
 make_split <- function(data, prop, stratify = FALSE, seed = 123) {
   validate_uniml_data(data)
@@ -1142,6 +1167,15 @@ print.summary.uniml_result <- function(x, ...) {
 #' @param ... Additional preprocessing fields.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_preprocess(
+#'   spec,
+#'   impute = "median_mode",
+#'   scale = "zscore",
+#'   encode = "onehot"
+#' )
+#' spec$preprocess$impute
 #' @export
 set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode = NULL,
                            ordered_as = NULL, outcome_na_action = NULL, balance = NULL,
@@ -1214,6 +1248,14 @@ set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode =
 #' @param ... Additional selection fields.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_feature_selection(
+#'   spec,
+#'   methods = c("univariate", "lasso"),
+#'   combine = "intersect"
+#' )
+#' spec$selection$methods
 #' @export
 set_feature_selection <- function(spec, methods = NULL, lambda = NULL, p_threshold = NULL,
                                   maxRuns = NULL, multivariate = NULL, combine = NULL,
@@ -1268,6 +1310,10 @@ set_feature_selection <- function(spec, methods = NULL, lambda = NULL, p_thresho
 #' @param search_space Optional parameter search space.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_learners(spec, c("lr", "cart"), tune = FALSE)
+#' spec
 #' @export
 set_learners <- function(spec, learners, tune = TRUE, params = NULL, search_space = NULL) {
   .validate_spec_object(spec)
@@ -1295,6 +1341,15 @@ set_learners <- function(spec, learners, tune = TRUE, params = NULL, search_spac
 #' @param in_cv Steps fitted inside cross-validation.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_leakage_policy(
+#'   spec,
+#'   mode = "strict_in",
+#'   in_cv = c("selection", "balance")
+#' )
+#' spec$leakage_policy
+#' spec$in_cv
 #' @export
 set_leakage_policy <- function(spec, mode = "custom",
                                in_cv = c("selection", "balance", "tuning")) {
@@ -1328,6 +1383,16 @@ set_leakage_policy <- function(spec, mode = "custom",
 #' @param ... Additional tuning fields.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_tuning(
+#'   spec,
+#'   tuner = "random_search",
+#'   folds = 5,
+#'   evals = 20,
+#'   metric = "auc"
+#' )
+#' spec
 #' @export
 set_tuning <- function(spec, tuner = "random_search", folds = 5, repeats = 1,
                        evals = 30, metric = "auc", nested = FALSE, seed = 123,
@@ -1377,6 +1442,15 @@ set_tuning <- function(spec, tuner = "random_search", folds = 5, repeats = 1,
 #' @param ... Additional evaluation fields.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_evaluation(
+#'   spec,
+#'   ci = "bootstrap",
+#'   calibration = "platt",
+#'   select_on = "validation"
+#' )
+#' spec
 #' @export
 set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
                            threshold_method = "youden", cost = c(fp = 1, fn = 1),
@@ -1439,6 +1513,10 @@ set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
 #' @param ... Additional explanation fields.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_explain(spec, model = "best", plots = c("importance", "beeswarm"))
+#' spec
 #' @export
 set_explain <- function(spec, model = "best",
                         plots = c("importance", "beeswarm", "dependence",
@@ -1464,6 +1542,10 @@ set_explain <- function(spec, model = "best",
 #' @param mapping A named character vector mapping column names to labels.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_labels(spec, c(age = "Age (years)"))
+#' spec
 #' @export
 set_labels <- function(spec, mapping = NULL) {
   .validate_spec_object(spec)
@@ -1483,6 +1565,10 @@ set_labels <- function(spec, mapping = NULL) {
 #' @param ... Additional output fields.
 #'
 #' @return Updated `uniml_spec`.
+#' @examples
+#' spec <- uniml_spec("binary", "y", "yes")
+#' spec <- set_output(spec, dir = tempfile("uniml-out-"))
+#' spec
 #' @export
 set_output <- function(spec, verbose = 1, n_workers = 1, future_strategy = "multisession",
                        dir = "output", ...) {

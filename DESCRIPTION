@@ -10,6 +10,8 @@ Description: A unified toolkit for predictive modeling covering preprocessing,
     feature selection, model training and tuning, evaluation, visualization,
     and SHAP interpretability, with an extensible task-type architecture.
 License: MIT + file LICENSE
+URL: https://github.com/zhengyangszy/uniml
+BugReports: https://github.com/zhengyangszy/uniml/issues
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

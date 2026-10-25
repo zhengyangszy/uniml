@@ -17,3 +17,8 @@ Updated \code{uniml_spec}.
 \description{
 Set display labels
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_labels(spec, c(age = "Age (years)"))
+spec
+}

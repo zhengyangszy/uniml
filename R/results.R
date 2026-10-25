@@ -277,6 +277,17 @@ rank_models <- function(x, select_on = "auto", best_model_metric = "composite") 
 #' @param best_model_metric Metric used for ranking.
 #'
 #' @return A `uniml_result`.
+#' @examples
+#' result <- assemble_result(
+#'   data_info = list(n_train = 100L, outcome = "y"),
+#'   metrics = data.frame(
+#'     model = c("lr", "cart"),
+#'     set = "validation",
+#'     probability = "raw",
+#'     auc = c(0.82, 0.78)
+#'   )
+#' )
+#' result
 #' @export
 assemble_result <- function(data_info = NULL, preprocess = NULL, selection = NULL,
                             tuning = NULL, cv = NULL, metrics = NULL, ci = NULL,
@@ -748,6 +759,12 @@ assemble_result <- function(data_info = NULL, preprocess = NULL, selection = NUL
 #'
 #' @return Invisibly returns a list with the output directory, written files,
 #'   and skipped stages.
+#' @examples
+#' \dontrun{
+#' result <- run_workflow(spec, train, validation)
+#' exported <- export_results(result, dir = tempfile("uniml-"))
+#' basename(exported$files)
+#' }
 #' @export
 export_results <- function(result, dir = "output", include_plots = TRUE,
                            plot_args = list()) {

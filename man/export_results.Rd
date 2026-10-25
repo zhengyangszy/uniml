@@ -30,3 +30,10 @@ Writes the complete result and all available stage tables using the
 directory layout defined by the package specification. Missing stages are
 skipped rather than treated as errors.
 }
+\examples{
+\dontrun{
+result <- run_workflow(spec, train, validation)
+exported <- export_results(result, dir = tempfile("uniml-"))
+basename(exported$files)
+}
+}

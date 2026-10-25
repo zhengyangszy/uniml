@@ -47,3 +47,14 @@ Updated \code{uniml_spec}.
 \description{
 Set tuning options
 }
+\examples{
+spec <- uniml_spec("binary", "y", "yes")
+spec <- set_tuning(
+  spec,
+  tuner = "random_search",
+  folds = 5,
+  evals = 20,
+  metric = "auc"
+)
+spec
+}

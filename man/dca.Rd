@@ -25,6 +25,12 @@ The method return value.
 S3 generic that dispatches decision-curve analysis by task type. Method
 bodies are added in later milestones.
 }
+\examples{
+probs <- c(0.05, 0.20, 0.35, 0.55, 0.70, 0.90)
+labels <- c(0, 0, 0, 1, 1, 1)
+curve <- dca(probs, labels = labels)
+head(curve)
+}
 \references{
 Vickers AJ, Elkin EB (2006). Decision curve analysis: a novel method for
 evaluating prediction models. \emph{Medical Decision Making}, 26(6), 565-574.

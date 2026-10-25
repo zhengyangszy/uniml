@@ -39,6 +39,7 @@ Imports:
 Suggests:
     mlr3mbo (>= 1.0.0),
     DiceKriging,
+    rgenoud,
     mlr3extralearners,
     missRanger,
     missForest,

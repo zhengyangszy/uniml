@@ -67,10 +67,23 @@
 
 .shap_data_bundle <- function(x, data, raw_data, feature_names) {
   if (is.null(data) && is.list(x)) {
-    data <- x$data
+    # Exact matching: `x$data` would partial-match `x$data_info` on a result.
+    data <- x[["data", exact = TRUE]]
+  }
+  if (is.null(data) && inherits(x, "uniml_result")) {
+    # Fall back to the training features stored by the workflow, which is what
+    # `run_workflow()` explains when `explain$model` is enabled.
+    train <- x$preprocess$train
+    if (is.data.frame(train)) {
+      outcome <- x$meta$spec$outcome
+      if (!is.null(outcome) && outcome %in% names(train)) {
+        train <- train[, setdiff(names(train), outcome), drop = FALSE]
+      }
+      data <- train
+    }
   }
   if (is.null(raw_data) && is.list(x)) {
-    raw_data <- x$raw_data
+    raw_data <- x[["raw_data", exact = TRUE]]
   }
   if (is.null(data)) {
     .abort("`data` is required for SHAP computation.")
@@ -540,17 +553,36 @@ explain_shap.list <- function(x, data = NULL, raw_data = NULL,
 }
 
 #' @rdname explain_shap
+#' @param model For a `uniml_result`, which models to explain: `"best"`,
+#'   `"all"`, or one or more model names.
 #' @export
 explain_shap.uniml_result <- function(x, data = NULL, raw_data = NULL,
-                                      feature_names = NULL, n_explain = 100L,
-                                      bg_n = 100L, seed = 123L,
-                                      positive = NULL,
+                                      feature_names = NULL, model = "all",
+                                      n_explain = 100L, bg_n = 100L,
+                                      seed = 123L, positive = NULL,
                                       parallel = FALSE,
                                       task_type = "binary",
                                       ...) {
   validate_uniml_result(x)
   if (is.null(x$models) || length(x$models) == 0L) {
     .abort("`x$models` must contain one or more trained mlr3 learners.")
+  }
+  if (!identical(model, "all")) {
+    keys <- names(x$models)
+    selected <- if (identical(model, "best")) {
+      .workflow_model_key(x, "best")
+    } else {
+      .assert_character_vector(model, "model")
+      model
+    }
+    missing <- setdiff(selected, keys)
+    if (length(missing) > 0L) {
+      .abort(sprintf(
+        "Unknown model(s) in the result: %s.",
+        paste(missing, collapse = ", ")
+      ))
+    }
+    x$models <- x$models[selected]
   }
   out <- explain_shap.Learner(
     x,

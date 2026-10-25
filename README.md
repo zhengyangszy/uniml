@@ -1,5 +1,7 @@
 # uniml
 
+**English** | [简体中文](README.zh.md)
+
 `uniml` is a unified predictive modeling toolkit for binary classification. It
 chains preprocessing, feature selection, model training and tuning, evaluation,
 visualization, and SHAP interpretability behind one small set of objects, while
@@ -95,6 +97,20 @@ The new-admission cohort is generated independently from the development
 cohort and has non-overlapping identifiers.
 
 ## Available models
+
+Every model in `uniml` is an mlr3 `Learner`, every data set becomes an mlr3
+`Task`, and tuning and resampling use mlr3 objects directly. The package adds a
+thin layer on top instead of hiding mlr3:
+
+- `make_task()` builds a `TaskClassif` from your data frame and specification.
+- `resolve_learners()` returns mlr3 learners plus their search spaces, which you
+  can also tune yourself with `mlr3tuning`.
+- `run_workflow()` stores the fitted learners in `result$models[[key]]$learner`,
+  so anything that accepts an mlr3 learner keeps working.
+- `as_uniml_binary()` converts an mlr3 `PredictionClassif` into the object used
+  by the evaluation and plotting helpers, and `plot_roc()`,
+  `plot_calibration()`, and `plot_confusion()` accept an mlr3 prediction
+  directly.
 
 The registry provides eight stable default binary-classification learners:
 

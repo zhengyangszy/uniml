@@ -64,3 +64,7 @@ calc_ci(
   seed = 1
 )
 }
+\references{
+Efron B, Tibshirani RJ (1993). \emph{An Introduction to the Bootstrap}. Chapman &
+Hall. doi:10.1201/9780429246593
+}

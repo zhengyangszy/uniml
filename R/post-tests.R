@@ -32,6 +32,10 @@
 #' @return A list containing AUC values, the best model, a pairwise p-value
 #'   matrix, a formatted matrix, and a summary data frame. Fewer than two
 #'   models returns a skipped result without an error.
+#' @references
+#' DeLong ER, DeLong DM, Clarke-Pearson DL (1988). Comparing the areas under two
+#' or more correlated receiver operating characteristic curves: a nonparametric
+#' approach. *Biometrics*, 44(3), 837-845. doi:10.2307/2531595
 #' @export
 #' @examples
 #' delong_test(
@@ -276,6 +280,10 @@ delong_test <- function(pred_list, labels, positive = NULL) {
 #'
 #' @return A list with the test statistic, degrees of freedom, p value,
 #'   group count, method, group details, and a status message.
+#' @references
+#' Hosmer DW, Lemeshow S (1980). A goodness-of-fit test for the multiple
+#' logistic regression model. *Communications in Statistics - Theory and
+#' Methods*, 10, 1043-1069. doi:10.1080/03610928008827941
 #' @export
 #' @examples
 #' set.seed(1)

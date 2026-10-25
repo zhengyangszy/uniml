@@ -4,6 +4,25 @@ First development version. The binary-classification stack is implemented end
 to end; `multiclass` and `survival` are registered as placeholders and raise a
 "not implemented" error.
 
+## Reporting and interoperability
+
+* New `tripod_ai_check()` audits a result against the TRIPOD+AI domains and
+  reports which information is present, absent, or out of scope. The checklist
+  is written to `reporting/tripod_ai.csv` by `export_results()`.
+* New `as_uniml_binary()` converts an mlr3 `PredictionClassif` into the
+  `uniml_binary` object used by the evaluation and plotting helpers;
+  `plot_roc()`, `plot_calibration()`, and `plot_confusion()` also accept an
+  mlr3 prediction directly.
+* Performance plots accept `models = "best"` and `models = "all"`, matching the
+  vocabulary of the SHAP plots.
+* `explain_shap()` on a `uniml_result` gains a `model` argument and falls back
+  to the stored training features when `data` is omitted.
+* `inst/REFERENCES.md` maps every layer to the literature it implements.
+* Bug fix: model comparison plots collapsed every model into one "model" series.
+  Multi-model prediction frames are now recognised before the single-model path,
+  and the prediction table keeps `model` and `set` in separate columns instead of
+  a combined `"model:set"` label.
+
 ## Data layer
 
 * `uniml_spec()` declares the task type, outcome, positive class, identifier and

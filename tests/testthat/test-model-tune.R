@@ -157,6 +157,7 @@ test_that("tune_model() rejects unsupported kappa tuning", {
 test_that("Bayesian tuning is available when mlr3mbo is installed", {
   skip_if_not_installed("mlr3mbo")
   skip_if_not_installed("DiceKriging")
+  skip_if_not_installed("rgenoud")
   setup <- make_tuning_setup()
 
   result <- tune_model(
@@ -164,9 +165,12 @@ test_that("Bayesian tuning is available when mlr3mbo is installed", {
     setup$learner_spec,
     resampling = mlr3::rsmp("cv", folds = 3L),
     tuner = "bayesian",
-    terminator = mlr3tuning::trm("evals", n_evals = 2L),
+    terminator = mlr3tuning::trm("evals", n_evals = 4L),
     seed = 123
   )
 
   expect_identical(result$status, "tuned")
+  expect_null(result$error)
+  expect_true(is.finite(result$best_metric))
+  expect_s3_class(result$tuner, "TunerMbo")
 })

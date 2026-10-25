@@ -423,6 +423,8 @@ calc_metrics.PredictionClassif <- function(x, threshold = NULL,
 #'
 #' @return A single numeric threshold, or `NA_real_` when it cannot be
 #'   estimated from the supplied classes.
+#' @references
+#' Youden WJ (1950). Index for rating diagnostic tests. *Cancer*, 3(1), 32-35.
 #' @export
 #' @examples
 #' find_threshold(c(0.1, 0.4, 0.6, 0.9), c(0, 0, 1, 1), method = "youden")
@@ -473,6 +475,15 @@ find_threshold <- function(probs, labels, method = c("youden", "cost", "fixed"),
 #' @return A list with NRI, IDI, group-specific NRI components, and sample
 #'   counts. Metrics are `NA` when the required event or non-event group is
 #'   absent.
+#' @references
+#' Pencina MJ, D'Agostino RB Sr, D'Agostino RB Jr, Vasan RS (2008). Evaluating
+#' the added predictive ability of a new marker: from area under the ROC curve
+#' to reclassification and beyond. *Statistics in Medicine*, 27(2), 157-172.
+#' doi:10.1002/sim.2929
+#'
+#' Pencina MJ, D'Agostino RB Sr, Steyerberg EW (2011). Extensions of net
+#' reclassification improvement calculations to measure usefulness of new
+#' biomarkers. *Statistics in Medicine*, 30(1), 11-21. doi:10.1002/sim.4067
 #' @export
 #' @examples
 #' calc_nri_idi(

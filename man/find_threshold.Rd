@@ -36,3 +36,6 @@ Find a binary classification threshold
 \examples{
 find_threshold(c(0.1, 0.4, 0.6, 0.9), c(0, 0, 1, 1), method = "youden")
 }
+\references{
+Youden WJ (1950). Index for rating diagnostic tests. \emph{Cancer}, 3(1), 32-35.
+}

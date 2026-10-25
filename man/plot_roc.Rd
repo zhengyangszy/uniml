@@ -3,6 +3,7 @@
 \name{plot_roc.uniml_result}
 \alias{plot_roc.uniml_result}
 \alias{plot_roc.uniml_binary}
+\alias{plot_roc.PredictionClassif}
 \alias{plot_roc.data.frame}
 \alias{plot_roc}
 \title{Plot ROC curves}
@@ -21,6 +22,8 @@
 
 \method{plot_roc}{uniml_binary}(x, models = NULL, palette = "bmj", ...)
 
+\method{plot_roc}{PredictionClassif}(x, positive = NULL, ...)
+
 \method{plot_roc}{data.frame}(x, models = NULL, palette = "bmj", ...)
 
 plot_roc(x, ...)
@@ -28,7 +31,8 @@ plot_roc(x, ...)
 \arguments{
 \item{x}{A \code{uniml_result} or prediction collection.}
 
-\item{models}{Optional subset of model names.}
+\item{models}{Optional subset of model names. \code{"best"} keeps the top-ranked
+model and \code{"all"} keeps every model.}
 
 \item{palette}{Discrete palette: a \code{ggsci} name, a colour, or a colour vector.}
 
@@ -40,6 +44,8 @@ plot_roc(x, ...)
 defaults to the comparison set used for ranking.}
 
 \item{...}{Reserved for method-specific arguments.}
+
+\item{positive}{Positive class label, used when \code{x} is an mlr3 prediction.}
 }
 \value{
 A \code{ggplot} object.

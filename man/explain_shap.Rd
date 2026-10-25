@@ -42,6 +42,7 @@
   data = NULL,
   raw_data = NULL,
   feature_names = NULL,
+  model = "all",
   n_explain = 100L,
   bg_n = 100L,
   seed = 123L,
@@ -84,6 +85,9 @@ registered \code{future} backend.}
 \item{task_type}{Task type. Only \code{"binary"} is implemented.}
 
 \item{...}{Method-specific arguments.}
+
+\item{model}{For a \code{uniml_result}, which models to explain: \code{"best"},
+\code{"all"}, or one or more model names.}
 }
 \value{
 The method return value.
@@ -91,4 +95,19 @@ The method return value.
 \description{
 S3 generic that dispatches SHAP computation by task type. Method bodies are
 added in later milestones.
+}
+\references{
+Lundberg SM, Lee SI (2017). A unified approach to interpreting model
+predictions. \emph{Advances in Neural Information Processing Systems}, 30.
+
+Lundberg SM, Erion G, Chen H, et al. (2020). From local explanations to
+global understanding with explainable AI for trees. \emph{Nature Machine
+Intelligence}, 2(1), 56-67. doi:10.1038/s42256-019-0138-9
+
+Covert I, Lee SI (2021). Improving KernelSHAP: practical Shapley value
+estimation using linear regression. \emph{Proceedings of AISTATS}, PMLR 130,
+3457-3465.
+
+Molnar C (2022). \emph{Interpretable Machine Learning}, 2nd edition.
+https://christophm.github.io/interpretable-ml-book/
 }

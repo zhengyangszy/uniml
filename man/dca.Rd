@@ -25,3 +25,12 @@ The method return value.
 S3 generic that dispatches decision-curve analysis by task type. Method
 bodies are added in later milestones.
 }
+\references{
+Vickers AJ, Elkin EB (2006). Decision curve analysis: a novel method for
+evaluating prediction models. \emph{Medical Decision Making}, 26(6), 565-574.
+doi:10.1177/0272989X06295361
+
+Vickers AJ, van Calster B, Steyerberg EW (2016). Net benefit approaches to
+the evaluation of prediction models, molecular markers, and diagnostic tests.
+\emph{BMJ}, 352, i6. doi:10.1136/bmj.i6
+}

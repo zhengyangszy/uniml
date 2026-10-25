@@ -32,6 +32,10 @@
 #'   here override parameters stored in `learner`.
 #'
 #' @return A trained mlr3 `Learner`.
+#' @references
+#' Lang M, Binder M, Richter J, et al. (2019). mlr3: a modern object-oriented
+#' machine learning framework in R. *Journal of Open Source Software*, 4(44),
+#' 1903. doi:10.21105/joss.01903
 #' @export
 #' @examples
 #' \dontrun{

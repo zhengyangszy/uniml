@@ -414,6 +414,14 @@ select_univariate <- function(data, outcome, p_threshold = 0.2) {
 #' @param standardize Whether predictors are standardised inside `glmnet`.
 #'
 #' @return A list with `selected_features`, `details`, and `params`.
+#' @references
+#' Tibshirani R (1996). Regression shrinkage and selection via the lasso.
+#' *Journal of the Royal Statistical Society: Series B*, 58(1), 267-288.
+#' doi:10.1111/j.2517-6161.1996.tb02080.x
+#'
+#' Friedman J, Hastie T, Tibshirani R (2010). Regularization paths for
+#' generalized linear models via coordinate descent. *Journal of Statistical
+#' Software*, 33(1), 1-22. doi:10.18637/jss.v033.i01
 #' @export
 #' @examples
 #' \dontrun{
@@ -489,6 +497,9 @@ select_lasso <- function(data, outcome, lambda = c("1se", "min"), nfolds = 10L,
 #'
 #' @return A `uniml_selection_result` with `selected_features`, `details`,
 #'   `params`, and `scores`.
+#' @references
+#' Kursa MB, Rudnicki WR (2010). Feature selection with the Boruta package.
+#' *Journal of Statistical Software*, 36(11), 1-13. doi:10.18637/jss.v036.i11
 #' @export
 #' @examples
 #' \dontrun{
@@ -662,6 +673,10 @@ select_rf_importance <- function(data, outcome, top_k = NULL,
 #' @param seed Random seed.
 #'
 #' @return A list with `selected_features`, `details`, and `params`.
+#' @references
+#' Guyon I, Weston J, Barnhill S, Vapnik V (2002). Gene selection for cancer
+#' classification using support vector machines. *Machine Learning*, 46(1),
+#' 389-422. doi:10.1023/A:1012487302797
 #' @export
 #' @examples
 #' \dontrun{

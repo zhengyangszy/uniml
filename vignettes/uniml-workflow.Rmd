@@ -8,15 +8,25 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 110
+)
 ```
 
 ## Overview
 
 `run_workflow()` chains the data, preprocessing, selection, modelling,
-evaluation, and result layers into one object. The held-out validation and
-test sets are transformed with parameters learned from the training set; they
-are never used to fit preprocessing, selection, calibration, or thresholds.
+evaluation, and result layers into one object. The held-out validation and test
+sets are transformed with parameters learned from the training set; they are
+never used to fit preprocessing, selection, calibration, or thresholds.
+
+The vignette uses the bundled cardiovascular example cohort. It is deliberately
+trimmed here so the vignette builds quickly; the full cohort has 2000 rows per
+data set.
 
 ## Build and configure the specification
 
@@ -29,6 +39,10 @@ development <- read.csv(
 new_admissions <- read.csv(
   system.file("extdata", "uniml-cvd-mortality-new.csv", package = "uniml")
 )
+
+set.seed(123)
+development <- development[1:800, ]
+new_admissions <- new_admissions[1:400, ]
 
 spec <- uniml_spec(
   task_type = "binary",
@@ -48,7 +62,6 @@ spec <- set_feature_selection(
   combine = "intersect"
 )
 spec <- set_learners(spec, c("lr", "cart"), tune = FALSE)
-spec <- set_tuning(spec, folds = 3, evals = 5, metric = "auc")
 spec <- set_evaluation(
   spec,
   ci = "bootstrap",
@@ -78,44 +91,112 @@ split <- make_split(
   seed = 123
 )
 
-names(split)
-nrow(split$train$data)
-nrow(split$validation$data)
-nrow(new_admissions)
+data.frame(
+  set = c("train", "validation"),
+  n = c(nrow(split$train$data), nrow(split$validation$data)),
+  events = c(
+    sum(split$train$data$died == "yes"),
+    sum(split$validation$data$died == "yes")
+  )
+)
 ```
 
 ## Run the workflow
+
+The first 200 new admissions play the role of an independent test set, the next
+200 the role of an external cohort. Both are reporting-only.
 
 ```{r workflow}
 result <- run_workflow(
   spec,
   train = split$train$data,
   validation = split$validation$data,
-  test = new_admissions,
-  ci_R = 200
+  test = new_admissions[1:200, ],
+  external = new_admissions[201:400, ],
+  ci_R = 100
 )
 
 result
-summary(result)
 ```
 
-The result stores the fitted preprocessor, selection details, tuning
-records, cross-validation output, metrics with confidence intervals,
-predictions, thresholds, and the model ranking. Useful components include:
+## Inspect the results
 
-```{r inspect-results}
-result$metrics
-result$ci
-result$ranking
-result$models
-result$selection$selected_features
+`result$metrics` is a wide table with one row per model, set, and probability
+track (raw or calibrated):
+
+```{r metrics}
+metrics <- result$metrics
+metrics[, c("model", "set", "probability", "auc", "brier", "accuracy")]
 ```
 
-The comparison set is controlled by `set_evaluation(select_on = ...)` and
-`rank_models(select_on = ...)`. With `"auto"`, the test set is used when
-available; otherwise validation is used. For external validation, set
-`select_on = "validation"` so model selection is not optimised on the new
-admission cohort.
+Bootstrap confidence intervals are stored separately so that they can be
+exported on their own:
+
+```{r ci}
+head(result$ci[result$ci$set == "validation", ], 4)
+```
+
+The ranking selects on the comparison set (validation by default) and never on
+the test or external cohorts:
+
+```{r ranking}
+result$ranking[, c("model", "score", "rank", "metric", "set")]
+```
+
+Cross-validation output is available per model and metric:
+
+```{r cv}
+cv_auc <- subset(result$cv$summary, metric == "auc")
+cv_auc[, c("model", "mean", "sd", "n")]
+```
+
+## Performance figures
+
+All plotting helpers accept `palette`, `theme`, `title`, `subtitle`, `caption`,
+and `set`, so figures can be styled for a manuscript without touching the
+result.
+
+```{r roc, fig.cap = "ROC curves on the held-out validation set."}
+plot_roc(result, set = "validation")
+```
+
+```{r calibration, fig.cap = "Calibration on the validation set, raw and calibrated probabilities."}
+plot_calibration(result, set = "validation")
+```
+
+```{r dca, fig.cap = "Decision curve analysis."}
+plot_dca(result)
+```
+
+```{r confusion, fig.cap = "Confusion matrix at the Youden threshold."}
+plot_confusion(result, models = "best")
+```
+
+## Thresholds, reclassification, and explainability
+
+The classification threshold is derived from out-of-fold training predictions,
+so it is not tuned on the validation data:
+
+```{r thresholds}
+as.data.frame(result$meta$thresholds)
+```
+
+When two or more models are compared, NRI and IDI are computed against the
+reference model (the best training AUC by default):
+
+```{r nri}
+if (!is.null(result$tests$nri_idi)) {
+  result$tests$nri_idi$summary
+}
+```
+
+SHAP explanations use `kernelshap`; the number of explained rows and the
+background sample are controlled by `n_explain` and `bg_n`:
+
+```{r shap, fig.cap = "Global SHAP importance of the best model."}
+explained <- explain_shap(result, model = "best", n_explain = 80, bg_n = 50)
+plot_shap_importance(explained)
+```
 
 ## Predict new data
 
@@ -125,15 +206,39 @@ calibration, threshold, and fitted learner. It does not refit anything.
 ```{r predict}
 predicted <- predict_uniml(
   result,
-  newdata = new_admissions,
+  newdata = new_admissions[1:5, ],
   model = "best"
 )
-head(predicted)
+predicted[, c("model", "prob", "calibrated_prob", "probability", "predicted")]
 ```
 
 The `newdata` argument may omit the outcome column. In that case the returned
 data frame contains predicted probabilities and classes without a truth
 column.
+
+## Reporting checklist
+
+`tripod_ai_check()` audits the result against the TRIPOD+AI domains and states
+where each piece of information lives. It never claims compliance: items such as
+study design, subgroup fairness, and code availability must be written by the
+author.
+
+```{r tripod}
+checklist <- tripod_ai_check(result)
+table(checklist$status)
+subset(checklist, status != "reported", select = c("domain", "status"))
+```
+
+## Export results
+
+`export_results()` writes the tables, figures, and fitted models, plus the
+reporting checklist, to a directory that can be used outside R:
+
+```{r export}
+out <- tempfile("uniml-vignette-")
+exported <- export_results(result, dir = out, include_plots = FALSE)
+basename(exported$files)
+```
 
 ## Leakage policies
 
@@ -146,16 +251,15 @@ spec_in <- set_leakage_policy(
   in_cv = c("selection", "balance", "tuning")
 )
 
-spec_out <- set_leakage_policy(spec, mode = "strict_out")
+spec_in$leakage_policy
+spec_in$in_cv
 ```
 
 `strict_in` repeats configured steps inside each cross-validation fold.
 `strict_out` keeps those steps outside the fold loop. The validation and test
 sets remain held out in both cases.
 
-## Export results
+## References
 
-After inspecting the result, data tables and figures can be written with
-`export_results()`. The workflow result is also the input to the
-performance and SHAP plotting functions.
-
+See `system.file("REFERENCES.md", package = "uniml")` for the methods and
+reporting guidelines that this workflow implements.

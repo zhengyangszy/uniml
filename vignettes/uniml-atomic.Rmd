@@ -8,19 +8,21 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 110
+)
 ```
 
 ## Overview
 
-`uniml` is arranged as a stack of small layers. The top-level
-`run_workflow()` function wires them together, but each layer can also be
-used directly. This vignette shows the atomic workflow with the package
-example data.
-
-The examples below are marked `eval = FALSE` where they train models or use
-optional packages. They are intended as executable templates in an interactive
-session with the suggested packages installed.
+`uniml` is arranged as a stack of small layers. The top-level `run_workflow()`
+function wires them together, but every layer can also be called directly. This
+vignette walks through the layers from bottom to top with the bundled example
+cohort.
 
 ## Data and specification
 
@@ -31,13 +33,14 @@ Identifier and excluded columns are kept out of the modelling matrix.
 library(uniml)
 
 data <- read.csv(
-  system.file("extdata", "uniml-example.csv", package = "uniml")
+  system.file("extdata", "uniml-cvd-mortality.csv", package = "uniml")
 )
-data$outcome <- factor(data$outcome, levels = c("no", "yes"))
+set.seed(123)
+data <- data[1:400, ]
 
 spec <- uniml_spec(
   task_type = "binary",
-  outcome = "outcome",
+  outcome = "died",
   positive = "yes",
   id = "id"
 )
@@ -48,9 +51,9 @@ names(data)
 
 ## Preprocessing
 
-`fit_preprocessor()` learns imputation, scaling, and encoding parameters from
-the training data. `apply_preprocessor()` applies those stored parameters to
-new data without refitting.
+`fit_preprocessor()` learns imputation, scaling, and encoding parameters from the
+training data. `apply_preprocessor()` applies those stored parameters to new data
+without refitting.
 
 ```{r preprocessing}
 spec <- set_preprocess(
@@ -63,110 +66,117 @@ spec <- set_preprocess(
 preprocessor <- fit_preprocessor(data, spec = spec)
 processed <- apply_preprocessor(preprocessor, data$data)
 
-head(processed)
+dim(processed)
+head(names(processed), 8)
 ```
 
 Use `scale = "minmax"` for range scaling, `encode = "onehot_drop"` to drop the
-first dummy level, and `balance = "smote"` or `"rose"` when the training set
-needs class balancing. Optional imputation methods include `"mice"`,
-`"missForest"`, and `"missRanger"`.
+first dummy level, and `balance = "smote"` or `"rose"` when the training set needs
+class balancing. Optional imputation methods include `"mice"`, `"missForest"`,
+and `"missRanger"`.
 
 ## Feature selection
 
-Multiple selection methods can be combined. The `k` argument controls
-top-k methods such as random-forest importance and RFE. Collinearity pruning is
-available through `cor_threshold` and `vif_threshold`.
+Multiple selection methods can be combined. `combine` controls whether the
+methods are intersected or unioned, and `remove_collinear()` prunes redundant
+predictors by correlation or VIF.
 
 ```{r selection}
 spec <- set_feature_selection(
   spec,
-  methods = c("univariate", "lasso", "rf", "rfe"),
+  methods = c("univariate", "lasso"),
   combine = "intersect",
-  k = 8,
   p_threshold = 0.2,
   cor_threshold = 0.9
 )
 
 selection <- select_features(processed, spec)
 selection$selected_features
-selection$details
+head(selection$details, 4)
 ```
 
-Individual methods are also exported, for example `select_lasso()`,
-`select_boruta()`, `select_rf_importance()`, `select_rfe()`,
-`select_univariate()`, and `select_multivariate()`.
+Individual methods are also exported: `select_univariate()`,
+`select_multivariate()`, `select_lasso()`, `select_boruta()`,
+`select_rf_importance()`, and `select_rfe()`.
 
 ## Training and tuning
 
-The same selection can be used to build an mlr3 task. Learner aliases are
-resolved from the specification, then tuned and trained with the selected
-features.
+The selected features are turned into an mlr3 task. Learner aliases come from the
+specification, and `tune_model()` returns the best parameters together with the
+cross-validated performance.
 
 ```{r training}
 features <- intersect(selection$selected_features, names(processed))
-task <- make_task(processed[, c(features, "outcome"), drop = FALSE], spec)
+task <- make_task(processed[, c(features, "died"), drop = FALSE], spec)
 
-spec <- set_learners(spec, c("lr", "rf", "cart"), tune = TRUE)
+spec <- set_learners(spec, "cart", tune = TRUE)
 learners <- resolve_learners(spec, task = task, n_train = task$nrow)
 
 tuned <- tune_model(
   task,
-  learners[["lr"]],
+  learners[["cart"]],
   resampling = mlr3::rsmp("cv", folds = 3),
   tuner = "random_search",
-  terminator = mlr3tuning::trm("evals", n_evals = 5),
+  terminator = mlr3tuning::trm("evals", n_evals = 4),
   seed = 123
 )
 
+tuned$status
+tuned$best_params
 model <- train_model(task, tuned$learner, params = tuned$best_params)
 model
 ```
 
 ## Metrics and confidence intervals
 
-Predictions can be evaluated with a fixed threshold or with the package
-threshold helpers. Bootstrap confidence intervals resample paired
-probabilities and labels.
+Predictions can be evaluated with a fixed threshold or with the threshold
+helpers. Bootstrap confidence intervals resample paired probabilities and labels.
 
 ```{r metrics}
 prediction <- model$predict(task)
 metrics <- calc_metrics(prediction, threshold = 0.5)
-metrics
+unlist(metrics[c("auc", "accuracy", "sensitivity", "specificity", "brier")])
 
 ci <- calc_ci(
   prediction$prob[, "yes"],
   prediction$truth,
   method = "bootstrap",
-  R = 200,
+  R = 50,
   threshold = 0.5,
   positive = "yes",
   seed = 123
 )
-ci
+ci[, c("metric", "mean", "lower", "upper")]
 ```
 
-The evaluation layer also includes calibration, DeLong and
-Hosmer-Lemeshow tests, NRI/IDI, decision-curve analysis, and threshold
-selection. See `set_evaluation()` and the corresponding help pages for
-configuration details.
+The evaluation layer also covers calibration, DeLong and Hosmer-Lemeshow tests,
+NRI/IDI, decision-curve analysis, and threshold selection.
+
+```{r calibration}
+calibrated <- calibrate_probabilities(
+  prediction$prob[, "yes"],
+  labels = prediction$truth,
+  method = "platt",
+  positive = "yes"
+)
+calibrated$method
+calibrated$metrics_before
+calibrated$metrics_after
+```
 
 ## Plots
 
-The plotting functions accept a trained prediction, a collection of
-predictions, or a `uniml_result`.
+The plotting functions accept a single prediction, a collection of predictions,
+or a `uniml_result`.
 
-```{r plots}
+```{r roc, fig.cap = "ROC curve of a single mlr3 prediction."}
 plot_roc(prediction)
-plot_calibration(prediction)
-plot_confusion(prediction, threshold = 0.5)
-plot_dca(dca(
-  prediction$prob[, "yes"],
-  prediction$truth,
-  positive = "yes"
-))
 ```
 
-All performance plots share `theme_uniml()` and use the package palette
-helpers. A model comparison figure can be produced after results are assembled
-with `assemble_result()` or `run_workflow()`.
+```{r confusion, fig.cap = "Confusion matrix at a fixed threshold."}
+plot_confusion(prediction, threshold = 0.5)
+```
 
+All performance plots share `theme_uniml()` and the palette helpers, so a
+comparison figure can be styled once and reused after `assemble_result()` or
+`run_workflow()`.

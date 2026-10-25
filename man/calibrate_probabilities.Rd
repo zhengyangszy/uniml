@@ -44,3 +44,20 @@ The method return value.
 S3 generic that dispatches probability calibration by task type. Method
 bodies are added in later milestones.
 }
+\references{
+Platt J (1999). Probabilistic outputs for support vector machines and
+comparisons to regularized likelihood methods. In: \emph{Advances in Large Margin
+Classifiers}. MIT Press.
+
+Zadrozny B, Elkan C (2002). Transforming classifier scores into accurate
+multiclass probability estimates. \emph{Proceedings of the 8th ACM SIGKDD},
+694-699. doi:10.1145/775047.775109
+
+Niculescu-Mizil A, Caruana R (2005). Predicting good probabilities with
+supervised learning. \emph{Proceedings of the 22nd ICML}, 625-632.
+doi:10.1145/1102351.1102430
+
+Van Calster B, McLernon DJ, van Smeden M, et al. (2019). Calibration: the
+Achilles heel of predictive analytics. \emph{BMC Medicine}, 17, 230.
+doi:10.1186/s12916-019-1466-7
+}

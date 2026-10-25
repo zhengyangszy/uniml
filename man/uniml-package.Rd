@@ -9,11 +9,11 @@
 A unified toolkit for predictive modeling covering preprocessing, feature selection, model training and tuning, evaluation, visualization, and SHAP interpretability, with an extensible task-type architecture.
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
+\strong{Maintainer}: Steve Shi \email{19943405117@163.com}
 
 Authors:
 \itemize{
-  \item First Last \email{first.last@example.com}
+  \item Steve Shi \email{19943405117@163.com}
 }
 
 }

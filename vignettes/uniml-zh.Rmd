@@ -1,0 +1,166 @@
+---
+title: "uniml 快速上手（中文）"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Quick start (Chinese)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+# The Chinese title in the YAML header is intentional; the index entry stays in
+# ASCII so that the vignette index is readable in any locale.
+options(rmarkdown.html_vignette.check_title = FALSE)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 110
+)
+```
+
+## 这个包解决什么问题
+
+做二分类预测模型（比如院内死亡、术后并发症）时，标准流程是：切分数据 → 缺失值填补 →
+标准化/哑变量 → 特征筛选 → 训练与调参 → 评价（区分度、校准度、临床获益）→ 画图 →
+解释（SHAP）。每一步网上都有零散代码，但拼起来容易出现三个问题：
+
+1. **信息泄漏**：在全集上做插补、标准化、特征筛选，再用交叉验证“验证”。
+2. **口径不一**：A 模型的 AUC 用原始概率，B 模型用校准后概率，最后放一张图里比较。
+3. **结果不可追溯**：跑完只有几张图，换台电脑复现不出来。
+
+`uniml` 把这些步骤串成一条流水线，并强制区分「拟合用的数据」和「评价用的数据」。
+
+## 数据角色
+
+| 数据 | 用途 | 参与模型选择？ |
+| --- | --- | --- |
+| `train` | 拟合预处理、筛选、模型、校准、阈值 | 是（内部交叉验证） |
+| `validation` | 模型比较与选择 | 是（默认） |
+| `test` | 只报告性能 | 否 |
+| `external` | 外部验证，只报告泛化 | 否 |
+
+## 一个最小例子
+
+```{r quick-start}
+library(uniml)
+
+development <- read.csv(
+  system.file("extdata", "uniml-cvd-mortality.csv", package = "uniml")
+)
+set.seed(123)
+development <- development[1:400, ]
+
+# 1. 声明任务
+spec <- uniml_spec(
+  task_type = "binary",
+  outcome = "died",
+  positive = "yes",
+  id = "id"
+)
+
+# 2. 预处理：中位数/众数填补 + z 分数标准化 + one-hot
+spec <- set_preprocess(spec, impute = "median_mode", scale = "zscore", encode = "onehot")
+
+# 3. 特征筛选：单因素 + LASSO 取交集
+spec <- set_feature_selection(spec, methods = c("univariate", "lasso"), combine = "intersect")
+
+# 4. 模型：logistic（glmnet）和决策树
+spec <- set_learners(spec, c("lr", "cart"), tune = FALSE)
+
+# 5. 评价设置：bootstrap 置信区间 + Platt 校准 + 用验证集选模型
+spec <- set_evaluation(
+  spec,
+  ci = "bootstrap",
+  calibration = "platt",
+  select_on = "validation"
+)
+
+# 6. 切分并跑通
+split <- make_split(as_uniml_data(development, spec), prop = c(0.8, 0.2),
+                    stratify = TRUE, seed = 123)
+
+result <- run_workflow(
+  spec,
+  train = split$train$data,
+  validation = split$validation$data,
+  ci_R = 100
+)
+```
+
+## 看结果
+
+```{r results}
+result$metrics[, c("model", "set", "probability", "auc", "brier", "accuracy")]
+result$ranking[, c("model", "score", "rank", "set")]
+result$selection$selected_features
+```
+
+`result$metrics` 里 `probability` 一列标明这一行用的是原始概率（`raw`）还是校准后概率
+（`calibrated`），比较模型时不会混。
+
+## 画图
+
+```{r roc, fig.cap = "验证集 ROC 曲线"}
+plot_roc(result, set = "validation")
+```
+
+```{r calibration, fig.cap = "校准曲线（原始 vs 校准后）"}
+plot_calibration(result, set = "validation")
+```
+
+```{r dca, fig.cap = "决策曲线分析"}
+plot_dca(result)
+```
+
+图形参数可以统一控制：`palette`（ggsci 配色名、单色或颜色向量）、`theme`、`title`、
+`subtitle`、`caption`。
+
+## 解释模型
+
+```{r shap, fig.cap = "最优模型的 SHAP 重要性"}
+explained <- explain_shap(result, model = "best", n_explain = 60, bg_n = 40)
+plot_shap_importance(explained)
+```
+
+`n_explain` 控制解释多少行（默认抽样 100 行），`bg_n` 控制背景样本量；两者共同决定
+运行时间。
+
+## 给新数据打分
+
+```{r predict}
+scored <- predict_uniml(result, newdata = split$validation$data, model = "best")
+head(scored[, c("model", "prob", "calibrated_prob", "probability", "predicted")])
+```
+
+`predict_uniml()` 复用已保存的预处理、特征筛选、校准器和阈值，不会重新拟合。
+
+## 导出结果
+
+```{r export}
+out <- tempfile("uniml-zh-")
+exported <- export_results(result, dir = out, include_plots = FALSE)
+basename(exported$files)
+```
+
+导出的 CSV 可以直接在 Excel、Python 或其它 R 脚本里用：预测概率、指标、阈值、
+校准前后对比、TRIPOD+AI 自检表都在里面。
+
+## 报告规范自检
+
+```{r tripod}
+checklist <- tripod_ai_check(result)
+table(checklist$status)
+subset(checklist, status != "reported", select = c("domain", "status"))
+```
+
+这个表只是自检工具：它告诉你结果对象里有哪些信息、缺哪些、哪些必须由作者自己写
+（研究设计、亚组公平性、代码可得性）。它不会替你宣称“符合 TRIPOD+AI”。
+
+## 更多文档
+
+- `vignette("uniml-workflow")`：完整工作流，含外部验证、NRI/IDI、阈值与导出
+- `vignette("uniml-shap")`：SHAP 重要度、蜂群、依赖、瀑布图
+- `vignette("uniml-atomic")`：逐层单独调用
+- `system.file("REFERENCES.md", package = "uniml")`：方法学参考文献清单

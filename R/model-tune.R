@@ -48,12 +48,9 @@
     random_search = mlr3tuning::tnr("random_search"),
     grid_search = mlr3tuning::tnr("grid_search"),
     bayesian = {
-      if (!requireNamespace("mlr3mbo", quietly = TRUE)) {
-        .abort("The `mlr3mbo` package is required for Bayesian tuning.")
-      }
-      if (!requireNamespace("DiceKriging", quietly = TRUE)) {
-        .abort("The `DiceKriging` package is required for Bayesian tuning.")
-      }
+      # `tnr("mbo")` needs the DiceKriging surrogate and, for search spaces with
+      # integer parameters, the rgenoud acquisition-function optimizer.
+      .check_packages(c("mlr3mbo", "DiceKriging", "rgenoud"))
       mlr3tuning::tnr("mbo")
     },
     .abort(sprintf("Unsupported tuning strategy \"%s\".", tuner))
@@ -160,10 +157,24 @@
 #'   [resolve_learners()].
 #' @param resampling An mlr3 resampling object used for tuning and evaluation.
 #' @param tuner Tuning strategy: `"random_search"`, `"grid_search"`,
-#'   `"bayesian"`, or an mlr3 tuner object.
+#'   `"bayesian"`, or an mlr3 tuner object. Bayesian tuning requires the
+#'   `mlr3mbo`, `DiceKriging`, and `rgenoud` packages; the latter two are used
+#'   for the Kriging surrogate and the acquisition-function optimizer.
 #' @param terminator An mlr3tuning terminator. The default uses 20 evals.
 #' @param nested Whether to use nested tuning.
 #' @param seed Random seed.
+#'
+#' @references
+#' Jones DR, Schonlau M, Welch WJ (1998). Efficient global optimization of
+#' expensive black-box functions. *Journal of Global Optimization*, 13, 455-492.
+#'
+#' Snoek J, Larochelle H, Adams RP (2012). Practical Bayesian optimization of
+#' machine learning algorithms. *Advances in Neural Information Processing
+#' Systems*, 25.
+#'
+#' Bischl B, Binder M, Lang M, et al. (2023). Hyperparameter optimization:
+#' Foundations, algorithms, best practices, and open challenges. *WIREs Data
+#' Mining and Knowledge Discovery*, 13(2), e1484.
 #'
 #' @return A structured `uniml_tuning_result` with the configured learner,
 #'   best parameters, best tuning value, reproducibility metadata, and the

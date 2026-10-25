@@ -27,3 +27,8 @@ delong_test(
   c(0, 1, 1, 0)
 )
 }
+\references{
+DeLong ER, DeLong DM, Clarke-Pearson DL (1988). Comparing the areas under two
+or more correlated receiver operating characteristic curves: a nonparametric
+approach. \emph{Biometrics}, 44(3), 837-845. doi:10.2307/2531595
+}

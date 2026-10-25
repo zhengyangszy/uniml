@@ -30,3 +30,10 @@ does not produce overconfident intervals.
 \examples{
 pool_mi(c(0.80, 0.82, 0.79), c(0.0004, 0.0004, 0.0005))
 }
+\references{
+Rubin DB (1987). \emph{Multiple Imputation for Nonresponse in Surveys}. Wiley.
+doi:10.1002/9780470316696
+
+Barnard J, Rubin DB (1999). Small-sample degrees of freedom with multiple
+imputation. \emph{Biometrika}, 86(4), 948-955. doi:10.1093/biomet/86.4.948
+}

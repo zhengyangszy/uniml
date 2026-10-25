@@ -47,3 +47,8 @@ data <- data.frame(
 select_rfe(data, "y", n_features = 2)
 }
 }
+\references{
+Guyon I, Weston J, Barnhill S, Vapnik V (2002). Gene selection for cancer
+classification using support vector machines. \emph{Machine Learning}, 46(1),
+389-422. doi:10.1023/A:1012487302797
+}

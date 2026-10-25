@@ -42,3 +42,13 @@ calc_nri_idi(
   truth = c(0, 1, 1, 0)
 )
 }
+\references{
+Pencina MJ, D'Agostino RB Sr, D'Agostino RB Jr, Vasan RS (2008). Evaluating
+the added predictive ability of a new marker: from area under the ROC curve
+to reclassification and beyond. \emph{Statistics in Medicine}, 27(2), 157-172.
+doi:10.1002/sim.2929
+
+Pencina MJ, D'Agostino RB Sr, Steyerberg EW (2011). Extensions of net
+reclassification improvement calculations to measure usefulness of new
+biomarkers. \emph{Statistics in Medicine}, 30(1), 11-21. doi:10.1002/sim.4067
+}

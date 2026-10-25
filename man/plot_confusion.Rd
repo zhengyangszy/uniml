@@ -3,6 +3,7 @@
 \name{plot_confusion.uniml_result}
 \alias{plot_confusion.uniml_result}
 \alias{plot_confusion.uniml_binary}
+\alias{plot_confusion.PredictionClassif}
 \alias{plot_confusion.data.frame}
 \alias{plot_confusion}
 \title{Plot confusion-matrix heatmaps}
@@ -30,6 +31,8 @@
   ...
 )
 
+\method{plot_confusion}{PredictionClassif}(x, positive = NULL, ...)
+
 \method{plot_confusion}{data.frame}(
   x,
   models = NULL,
@@ -44,7 +47,8 @@ plot_confusion(x, ...)
 \arguments{
 \item{x}{A \code{uniml_result} or prediction collection.}
 
-\item{models}{Optional subset of model names.}
+\item{models}{Optional subset of model names. \code{"best"} keeps the top-ranked
+model and \code{"all"} keeps every model.}
 
 \item{threshold}{Classification threshold. When \code{NULL}, the configured
 threshold method is used.}
@@ -60,6 +64,8 @@ threshold method is used.}
 \item{set}{Data set to plot; defaults to the comparison set used for ranking.}
 
 \item{...}{Reserved for method-specific arguments.}
+
+\item{positive}{Positive class label, used when \code{x} is an mlr3 prediction.}
 }
 \value{
 A \code{ggplot} object.

@@ -455,6 +455,14 @@ apply_imputer.uniml_step_impute <- function(object, newdata, ...) {
 #' @param ... Arguments passed to [fit_imputer()].
 #'
 #' @return The imputed data, matching the class of `data`.
+#' @references
+#' van Buuren S, Groothuis-Oudshoorn K (2011). mice: multivariate imputation by
+#' chained equations in R. *Journal of Statistical Software*, 45(3), 1-67.
+#' doi:10.18637/jss.v045.i03
+#'
+#' Stekhoven DJ, Buhlmann P (2012). MissForest: non-parametric missing value
+#' imputation for mixed-type data. *Bioinformatics*, 28(1), 112-118.
+#' doi:10.1093/bioinformatics/btr597
 #' @export
 #' @examples
 #' impute_data(data.frame(x = c(1, NA, 3), y = c(0, 1, 0)),

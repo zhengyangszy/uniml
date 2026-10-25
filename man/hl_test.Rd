@@ -29,3 +29,8 @@ p <- stats::runif(80)
 y <- stats::rbinom(80, 1, p)
 hl_test(p, y, g = 10)
 }
+\references{
+Hosmer DW, Lemeshow S (1980). A goodness-of-fit test for the multiple
+logistic regression model. \emph{Communications in Statistics - Theory and
+Methods}, 10, 1043-1069. doi:10.1080/03610928008827941
+}

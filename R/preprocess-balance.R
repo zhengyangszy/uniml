@@ -196,6 +196,19 @@ apply_balance.uniml_step_balance <- function(object, newdata, ...) {
 #' @param ... Arguments passed to [fit_preprocessor()].
 #'
 #' @return The balanced data, matching the class of `data`.
+#' @references
+#' Chawla NV, Bowyer KW, Hall LO, Kegelmeyer WP (2002). SMOTE: synthetic
+#' minority over-sampling technique. *Journal of Artificial Intelligence
+#' Research*, 16, 321-357. doi:10.1613/jair.953
+#'
+#' Menardi G, Torelli N (2014). Training and assessing classification rules with
+#' imbalanced data. *Data Mining and Knowledge Discovery*, 28(1), 92-122.
+#' doi:10.1007/s10618-012-0295-5
+#'
+#' van den Goorbergh R, van Smeden M, Timmerman D, Van Calster B (2022). The
+#' harm of class imbalance corrections for risk prediction models: illustration
+#' and simulation using logistic regression. *Journal of the American Medical
+#' Informatics Association*, 29(9), 1525-1534. doi:10.1093/jamia/ocac093
 #' @export
 #' @examples
 #' balance_classes(

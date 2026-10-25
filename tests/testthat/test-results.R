@@ -120,6 +120,7 @@ test_that("export_results() writes the output layout and skips missing stages", 
   expect_true(file.exists(file.path(root, "performance", "before_after_calibration.csv")))
   expect_true(file.exists(file.path(root, "performance", "metrics_test.csv")))
   expect_true(file.exists(file.path(root, "models", "final_cart.rds")))
+  expect_true(file.exists(file.path(root, "reporting", "tripod_ai.csv")))
   expect_true("shap" %in% names(exported$skipped) == FALSE)
   expect_false("plots" %in% exported$skipped)
 

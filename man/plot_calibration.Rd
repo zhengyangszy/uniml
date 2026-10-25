@@ -3,6 +3,7 @@
 \name{plot_calibration.uniml_result}
 \alias{plot_calibration.uniml_result}
 \alias{plot_calibration.uniml_binary}
+\alias{plot_calibration.PredictionClassif}
 \alias{plot_calibration.data.frame}
 \alias{plot_calibration}
 \title{Plot probability-calibration curves}
@@ -22,6 +23,8 @@
 
 \method{plot_calibration}{uniml_binary}(x, models = NULL, bins = 10L, palette = "bmj", ...)
 
+\method{plot_calibration}{PredictionClassif}(x, positive = NULL, ...)
+
 \method{plot_calibration}{data.frame}(x, models = NULL, bins = 10L, palette = "bmj", ...)
 
 plot_calibration(x, ...)
@@ -29,7 +32,8 @@ plot_calibration(x, ...)
 \arguments{
 \item{x}{A \code{uniml_result} or prediction collection.}
 
-\item{models}{Optional subset of model names.}
+\item{models}{Optional subset of model names. \code{"best"} keeps the top-ranked
+model and \code{"all"} keeps every model.}
 
 \item{bins}{Number of quantile bins.}
 
@@ -42,6 +46,8 @@ plot_calibration(x, ...)
 \item{set}{Data set to plot; defaults to the comparison set used for ranking.}
 
 \item{...}{Reserved for method-specific arguments.}
+
+\item{positive}{Positive class label, used when \code{x} is an mlr3 prediction.}
 }
 \value{
 A \code{ggplot} object.

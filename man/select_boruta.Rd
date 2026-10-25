@@ -49,3 +49,7 @@ data <- data.frame(
 select_boruta(data, "y", maxRuns = 11, num_threads = 1)
 }
 }
+\references{
+Kursa MB, Rudnicki WR (2010). Feature selection with the Boruta package.
+\emph{Journal of Statistical Software}, 36(11), 1-13. doi:10.18637/jss.v036.i11
+}

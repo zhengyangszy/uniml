@@ -33,3 +33,8 @@ task <- make_task(data, spec)
 train_model(task, mlr3::lrn("classif.rpart", predict_type = "prob"))
 }
 }
+\references{
+Lang M, Binder M, Richter J, et al. (2019). mlr3: a modern object-oriented
+machine learning framework in R. \emph{Journal of Open Source Software}, 4(44),
+1903. doi:10.21105/joss.01903
+}

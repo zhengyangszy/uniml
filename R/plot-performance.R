@@ -8,6 +8,7 @@
 
 .prediction_like <- function(x) {
   is.list(x) &&
+    !is.data.frame(x) &&
     !is.null(x$truth) &&
     (!is.null(x$prob) || !is.null(x$calibrated_prob))
 }
@@ -311,6 +312,31 @@
   predictions[predictions$set == set, , drop = FALSE]
 }
 
+# "best" and "all" are accepted for `models` so the performance plots use the
+# same vocabulary as the SHAP plots.
+.resolve_plot_models <- function(x, models = NULL) {
+  if (is.null(models)) {
+    return(NULL)
+  }
+  .assert_character_vector(models, "models")
+  if (identical(models, "all")) {
+    return(NULL)
+  }
+  if (identical(models, "best")) {
+    if (inherits(x, "uniml_result")) {
+      best <- tryCatch(
+        .workflow_model_key(x, "best"),
+        error = function(e) NULL
+      )
+      if (!is.null(best)) {
+        return(best)
+      }
+    }
+    return(NULL)
+  }
+  models
+}
+
 .filter_prediction_models <- function(predictions, models = NULL) {
   if (is.null(models)) {
     return(predictions)
@@ -386,7 +412,9 @@
 #' curve per model is drawn.
 #'
 #' @param x A `uniml_result` or prediction collection.
-#' @param models Optional subset of model names.
+#' @param models Optional subset of model names. `"best"` keeps the top-ranked
+#'   model and `"all"` keeps every model.
+#' @param positive Positive class label, used when `x` is an mlr3 prediction.
 #' @param palette Discrete palette: a `ggsci` name, a colour, or a colour vector.
 #' @param theme A `ggplot2` theme applied to the figure.
 #' @param title,subtitle,caption Optional figure labels.
@@ -414,7 +442,10 @@ plot_roc.uniml_result <- function(x, models = NULL, palette = "bmj",
     predictions,
     if (is.null(set)) .default_plot_set(x) else set
   )
-  predictions <- .filter_prediction_models(predictions, models)
+  predictions <- .filter_prediction_models(
+    predictions,
+    .resolve_plot_models(x, models)
+  )
   model_names <- unique(predictions$model)
   curves <- lapply(model_names, function(name) {
     rows <- predictions[predictions$model == name, , drop = FALSE]
@@ -463,6 +494,12 @@ plot_roc.uniml_binary <- function(x, models = NULL, palette = "bmj", ...) {
     palette = palette,
     ...
   )
+}
+
+#' @rdname plot_roc
+#' @export
+plot_roc.PredictionClassif <- function(x, positive = NULL, ...) {
+  plot_roc(as_uniml_binary(x, positive = positive), ...)
 }
 
 #' @rdname plot_roc
@@ -535,7 +572,9 @@ plot_roc.data.frame <- function(x, models = NULL, palette = "bmj", ...) {
 #' faceted before/after comparison is produced.
 #'
 #' @param x A `uniml_result` or prediction collection.
-#' @param models Optional subset of model names.
+#' @param models Optional subset of model names. `"best"` keeps the top-ranked
+#'   model and `"all"` keeps every model.
+#' @param positive Positive class label, used when `x` is an mlr3 prediction.
 #' @param bins Number of quantile bins.
 #' @param palette Discrete palette: a `ggsci` name, a colour, or a colour vector.
 #' @param theme A `ggplot2` theme applied to the figure.
@@ -565,7 +604,10 @@ plot_calibration.uniml_result <- function(x, models = NULL, bins = 10L,
     predictions,
     if (is.null(set)) .default_plot_set(x) else set
   )
-  predictions <- .filter_prediction_models(predictions, models)
+  predictions <- .filter_prediction_models(
+    predictions,
+    .resolve_plot_models(x, models)
+  )
   has_calibrated <- any(!is.na(predictions$calibrated_prob))
   rows <- unlist(lapply(unique(predictions$model), function(name) {
     rows <- predictions[predictions$model == name, , drop = FALSE]
@@ -644,6 +686,12 @@ plot_calibration.uniml_binary <- function(x, models = NULL, bins = 10L,
     palette = palette,
     ...
   )
+}
+
+#' @rdname plot_calibration
+#' @export
+plot_calibration.PredictionClassif <- function(x, positive = NULL, ...) {
+  plot_calibration(as_uniml_binary(x, positive = positive), ...)
 }
 
 #' @rdname plot_calibration
@@ -812,7 +860,9 @@ plot_dca.uniml_dca <- function(x, palette = "bmj", ...) {
 #' is supplied.
 #'
 #' @param x A `uniml_result` or prediction collection.
-#' @param models Optional subset of model names.
+#' @param models Optional subset of model names. `"best"` keeps the top-ranked
+#'   model and `"all"` keeps every model.
+#' @param positive Positive class label, used when `x` is an mlr3 prediction.
 #' @param threshold Classification threshold. When `NULL`, the configured
 #'   threshold method is used.
 #' @param calibrated Whether to draw the calibrated probabilities.
@@ -847,7 +897,10 @@ plot_confusion.uniml_result <- function(x, models = NULL, threshold = NULL,
     predictions,
     if (is.null(set)) .default_plot_set(x) else set
   )
-  predictions <- .filter_prediction_models(predictions, models)
+  predictions <- .filter_prediction_models(
+    predictions,
+    .resolve_plot_models(x, models)
+  )
   if (nrow(predictions) == 0L ||
       !any(!is.na(.prediction_values(predictions, calibrated = calibrated)))) {
     .abort("No predictions are available for the requested calibration stage.")
@@ -899,6 +952,12 @@ plot_confusion.uniml_binary <- function(x, models = NULL, threshold = NULL,
     palette = palette,
     ...
   )
+}
+
+#' @rdname plot_confusion
+#' @export
+plot_confusion.PredictionClassif <- function(x, positive = NULL, ...) {
+  plot_confusion(as_uniml_binary(x, positive = positive), ...)
 }
 
 #' @rdname plot_confusion

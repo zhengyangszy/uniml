@@ -30,3 +30,12 @@ Convenience wrapper that fits an imputer and applies it to the same data.
 impute_data(data.frame(x = c(1, NA, 3), y = c(0, 1, 0)),
   method = "median_mode", outcome = "y")
 }
+\references{
+van Buuren S, Groothuis-Oudshoorn K (2011). mice: multivariate imputation by
+chained equations in R. \emph{Journal of Statistical Software}, 45(3), 1-67.
+doi:10.18637/jss.v045.i03
+
+Stekhoven DJ, Buhlmann P (2012). MissForest: non-parametric missing value
+imputation for mixed-type data. \emph{Bioinformatics}, 28(1), 112-118.
+doi:10.1093/bioinformatics/btr597
+}

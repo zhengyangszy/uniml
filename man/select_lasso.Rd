@@ -49,3 +49,12 @@ data <- data.frame(
 select_lasso(data, "y", nfolds = 3)
 }
 }
+\references{
+Tibshirani R (1996). Regression shrinkage and selection via the lasso.
+\emph{Journal of the Royal Statistical Society: Series B}, 58(1), 267-288.
+doi:10.1111/j.2517-6161.1996.tb02080.x
+
+Friedman J, Hastie T, Tibshirani R (2010). Regularization paths for
+generalized linear models via coordinate descent. \emph{Journal of Statistical
+Software}, 33(1), 1-22. doi:10.18637/jss.v033.i01
+}

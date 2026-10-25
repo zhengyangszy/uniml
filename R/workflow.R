@@ -1222,7 +1222,9 @@
   for (name in names(entries)) {
     entry <- entries[[name]]
     frame <- data.frame(
-      model = name,
+      # Entry keys are "<model>:<set>"; the table keeps the model and the set in
+      # their own columns so that the plotting layer can filter on both.
+      model = if (is.null(entry$model)) name else as.character(entry$model),
       prob = as.numeric(entry$prob),
       calibrated_prob = as.numeric(entry$calibrated_prob),
       truth = as.character(entry$truth),
@@ -1881,6 +1883,19 @@
 #'
 #' @return A `uniml_result` with fitted models, predictions, metrics, and
 #'   confidence intervals.
+#' @references
+#' Collins GS, Moons KGM, Dhiman P, et al. (2024). TRIPOD+AI statement: updated
+#' guidance for reporting clinical prediction models that use regression or
+#' machine learning methods. *BMJ*, 385, e078378. doi:10.1136/bmj-2023-078378
+#'
+#' Steyerberg EW, Harrell FE, Borsboom GJ, et al. (2001). Internal validation of
+#' predictive models: efficiency of some procedures for logistic regression
+#' analysis. *Journal of Clinical Epidemiology*, 54(8), 774-781.
+#' doi:10.1016/S0895-4356(01)00341-9
+#'
+#' Steyerberg EW (2019). *Clinical Prediction Models: A Practical Approach to
+#' Development, Validation, and Updating*, 2nd edition. Springer.
+#' doi:10.1007/978-3-030-16399-0
 #' @export
 #' @examples
 #' \dontrun{

@@ -17,6 +17,12 @@
 #'   total variance), `lower`, `upper`, `df` (Barnard-Rubin degrees of freedom;
 #'   `Inf` when no between-imputation variance is present), `m`,
 #'   `within` (`U`), `between` (`B`), and `total` (`T`).
+#' @references
+#' Rubin DB (1987). *Multiple Imputation for Nonresponse in Surveys*. Wiley.
+#' doi:10.1002/9780470316696
+#'
+#' Barnard J, Rubin DB (1999). Small-sample degrees of freedom with multiple
+#' imputation. *Biometrika*, 86(4), 948-955. doi:10.1093/biomet/86.4.948
 #' @export
 #' @examples
 #' pool_mi(c(0.80, 0.82, 0.79), c(0.0004, 0.0004, 0.0005))
@@ -173,6 +179,9 @@ pool_mi <- function(estimates, variances, level = 0.95) {
 #'
 #' @return A data frame with columns `metric`, `mean`, `se` (bootstrap standard
 #'   error), `lower`, `upper`, `n_effective`, and `formatted`.
+#' @references
+#' Efron B, Tibshirani RJ (1993). *An Introduction to the Bootstrap*. Chapman &
+#' Hall. doi:10.1201/9780429246593
 #' @export
 #' @examples
 #' calc_ci(

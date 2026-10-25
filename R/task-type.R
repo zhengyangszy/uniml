@@ -205,6 +205,14 @@ list_task_types <- function(implemented_only = FALSE) {
 #' @param ... Method-specific arguments.
 #'
 #' @return The method return value.
+#' @references
+#' Steyerberg EW (2019). *Clinical Prediction Models: A Practical Approach to
+#' Development, Validation, and Updating*, 2nd edition. Springer.
+#' doi:10.1007/978-3-030-16399-0
+#'
+#' Robin X, Turck N, Hainard A, et al. (2011). pROC: an open-source package for
+#' R and S+ to analyze and compare ROC curves. *BMC Bioinformatics*, 12, 77.
+#' doi:10.1186/1471-2105-12-77
 #' @export
 calc_metrics <- function(x, ...) {
   UseMethod("calc_metrics")
@@ -226,6 +234,22 @@ calc_metrics.default <- function(x, ...) {
 #' @param ... Method-specific arguments.
 #'
 #' @return The method return value.
+#' @references
+#' Platt J (1999). Probabilistic outputs for support vector machines and
+#' comparisons to regularized likelihood methods. In: *Advances in Large Margin
+#' Classifiers*. MIT Press.
+#'
+#' Zadrozny B, Elkan C (2002). Transforming classifier scores into accurate
+#' multiclass probability estimates. *Proceedings of the 8th ACM SIGKDD*,
+#' 694-699. doi:10.1145/775047.775109
+#'
+#' Niculescu-Mizil A, Caruana R (2005). Predicting good probabilities with
+#' supervised learning. *Proceedings of the 22nd ICML*, 625-632.
+#' doi:10.1145/1102351.1102430
+#'
+#' Van Calster B, McLernon DJ, van Smeden M, et al. (2019). Calibration: the
+#' Achilles heel of predictive analytics. *BMC Medicine*, 17, 230.
+#' doi:10.1186/s12916-019-1466-7
 #' @export
 calibrate_probabilities <- function(x, ...) {
   UseMethod("calibrate_probabilities")
@@ -253,6 +277,14 @@ calibrate_probabilities.uniml_binary <- function(x, ...) {
 #' @param ... Method-specific arguments.
 #'
 #' @return The method return value.
+#' @references
+#' Vickers AJ, Elkin EB (2006). Decision curve analysis: a novel method for
+#' evaluating prediction models. *Medical Decision Making*, 26(6), 565-574.
+#' doi:10.1177/0272989X06295361
+#'
+#' Vickers AJ, van Calster B, Steyerberg EW (2016). Net benefit approaches to
+#' the evaluation of prediction models, molecular markers, and diagnostic tests.
+#' *BMJ*, 352, i6. doi:10.1136/bmj.i6
 #' @export
 dca <- function(x, ...) {
   UseMethod("dca")
@@ -280,6 +312,20 @@ dca.uniml_binary <- function(x, ...) {
 #' @param ... Method-specific arguments.
 #'
 #' @return The method return value.
+#' @references
+#' Lundberg SM, Lee SI (2017). A unified approach to interpreting model
+#' predictions. *Advances in Neural Information Processing Systems*, 30.
+#'
+#' Lundberg SM, Erion G, Chen H, et al. (2020). From local explanations to
+#' global understanding with explainable AI for trees. *Nature Machine
+#' Intelligence*, 2(1), 56-67. doi:10.1038/s42256-019-0138-9
+#'
+#' Covert I, Lee SI (2021). Improving KernelSHAP: practical Shapley value
+#' estimation using linear regression. *Proceedings of AISTATS*, PMLR 130,
+#' 3457-3465.
+#'
+#' Molnar C (2022). *Interpretable Machine Learning*, 2nd edition.
+#' https://christophm.github.io/interpretable-ml-book/
 #' @export
 explain_shap <- function(x, ...) {
   UseMethod("explain_shap")

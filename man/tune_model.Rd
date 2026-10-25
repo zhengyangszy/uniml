@@ -23,7 +23,9 @@ tune_model(
 \item{resampling}{An mlr3 resampling object used for tuning and evaluation.}
 
 \item{tuner}{Tuning strategy: \code{"random_search"}, \code{"grid_search"},
-\code{"bayesian"}, or an mlr3 tuner object.}
+\code{"bayesian"}, or an mlr3 tuner object. Bayesian tuning requires the
+\code{mlr3mbo}, \code{DiceKriging}, and \code{rgenoud} packages; the latter two are used
+for the Kriging surrogate and the acquisition-function optimizer.}
 
 \item{terminator}{An mlr3tuning terminator. The default uses 20 evals.}
 
@@ -63,4 +65,16 @@ tune_model(
   terminator = mlr3tuning::trm("evals", n_evals = 2)
 )
 }
+}
+\references{
+Jones DR, Schonlau M, Welch WJ (1998). Efficient global optimization of
+expensive black-box functions. \emph{Journal of Global Optimization}, 13, 455-492.
+
+Snoek J, Larochelle H, Adams RP (2012). Practical Bayesian optimization of
+machine learning algorithms. \emph{Advances in Neural Information Processing
+Systems}, 25.
+
+Bischl B, Binder M, Lang M, et al. (2023). Hyperparameter optimization:
+Foundations, algorithms, best practices, and open challenges. \emph{WIREs Data
+Mining and Knowledge Discovery}, 13(2), e1484.
 }

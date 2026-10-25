@@ -88,3 +88,12 @@ calc_metrics(
   threshold = 0.5
 )
 }
+\references{
+Steyerberg EW (2019). \emph{Clinical Prediction Models: A Practical Approach to
+Development, Validation, and Updating}, 2nd edition. Springer.
+doi:10.1007/978-3-030-16399-0
+
+Robin X, Turck N, Hainard A, et al. (2011). pROC: an open-source package for
+R and S+ to analyze and compare ROC curves. \emph{BMC Bioinformatics}, 12, 77.
+doi:10.1186/1471-2105-12-77
+}

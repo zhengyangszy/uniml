@@ -3,11 +3,11 @@
 .uniml_learner_registry <- new.env(parent = emptyenv())
 
 .uniml_default_learner_keys <- function() {
-  c("lr", "rf", "xgb", "lgb", "nnet", "knn", "cart", "nb")
+  c("lr", "rf", "xgb", "nnet", "knn", "cart", "nb")
 }
 
 .uniml_optional_learner_keys <- function() {
-  c("log_reg", "svm", "lda", "qda", "randomForest", "gbm")
+  c("log_reg", "svm", "lda", "qda")
 }
 
 .is_param_set <- function(x) {
@@ -52,26 +52,34 @@
 
 .require_learner_dictionaries <- function() {
   .check_packages(c("mlr3", "mlr3learners"))
-  # mlr3extralearners is not on CRAN, so it is loaded only when installed. It
-  # registers `classif.lightgbm`, `classif.randomForest`, and `classif.gbm` when
-  # its namespace is loaded.
-  requireNamespace("mlr3extralearners", quietly = TRUE)
   invisible(TRUE)
 }
 
-.require_mlr3extralearners <- function(key) {
-  if (!requireNamespace("mlr3extralearners", quietly = TRUE)) {
-    .abort(sprintf(
-      paste(
-        "Learner \"%s\" requires package 'mlr3extralearners', which is not",
-        "available from CRAN. Install it with",
-        "remotes::install_github(\"mlr-org/mlr3extralearners\") or pick",
-        "another learner."
-      ),
-      key
-    ))
+# Keys that used to be built in and now need a non-CRAN learner package. They
+# get an explicit migration hint instead of the generic "unknown learner" error.
+.retired_learner_hints <- function() {
+  c(
+    lgb = "classif.lightgbm",
+    randomForest = "classif.randomForest",
+    gbm = "classif.gbm"
+  )
+}
+
+.retired_learner_hint <- function(key) {
+  target <- .retired_learner_hints()[[key]]
+  if (is.null(target)) {
+    return(sprintf("Unknown learner key \"%s\".", key))
   }
-  invisible(TRUE)
+  sprintf(
+    paste(
+      "The \"%s\" key is no longer built in because its mlr3 learner lives in",
+      "'mlr3extralearners', which is not on CRAN. Install and load that",
+      "package, then pass the mlr3 learner key directly:",
+      "set_learners(spec, \"%s\")."
+    ),
+    key,
+    target
+  )
 }
 
 .make_default_learner <- function(key, seed = 123L) {
@@ -98,14 +106,6 @@
       verbose = 0L,
       nthread = 1L
     ),
-    lgb = {
-      .require_mlr3extralearners("lgb")
-      mlr3::lrn(
-        "classif.lightgbm",
-        predict_type = "prob",
-        verbose = -1L
-      )
-    },
     nnet = mlr3::lrn(
       "classif.nnet",
       predict_type = "prob",
@@ -136,9 +136,6 @@
 
 .make_optional_learner <- function(key, seed = 123L) {
   .require_learner_dictionaries()
-  if (key %in% c("randomForest", "gbm")) {
-    .require_mlr3extralearners(key)
-  }
   learner <- switch(
     key,
     log_reg = mlr3::lrn(
@@ -158,17 +155,6 @@
     qda = mlr3::lrn(
       "classif.qda",
       predict_type = "prob"
-    ),
-    randomForest = mlr3::lrn(
-      "classif.randomForest",
-      predict_type = "prob"
-    ),
-    gbm = mlr3::lrn(
-      "classif.gbm",
-      predict_type = "prob",
-      distribution = "bernoulli",
-      verbose = FALSE,
-      n.cores = 1L
     ),
     .abort(sprintf("Unknown optional learner key \"%s\".", key))
   )
@@ -221,15 +207,6 @@
       colsample_bytree = paradox::p_dbl(lower = 0.6, upper = 0.8),
       lambda = paradox::p_dbl(lower = 1, upper = 3),
       alpha = paradox::p_dbl(lower = 0, upper = 1)
-    ),
-    lgb = paradox::ps(
-      num_iterations = paradox::p_int(lower = 50L, upper = 150L),
-      learning_rate = paradox::p_dbl(lower = 0.01, upper = 0.1),
-      num_leaves = paradox::p_int(lower = 15L, upper = 31L),
-      min_data_in_leaf = paradox::p_int(lower = 20L, upper = 40L),
-      feature_fraction = paradox::p_dbl(lower = 0.6, upper = 0.8),
-      lambda_l2 = paradox::p_dbl(lower = 1, upper = 3),
-      bagging_fraction = paradox::p_dbl(lower = 0.6, upper = 0.8)
     ),
     nnet = paradox::ps(
       size = paradox::p_int(lower = 3L, upper = 10L),
@@ -444,6 +421,9 @@ register_learner <- function(key, learner, search_space = NULL) {
 
   if (is.character(item) && is.null(entry)) {
     if (!mlr3::mlr_learners$has(key)) {
+      if (key %in% names(.retired_learner_hints())) {
+        .abort(.retired_learner_hint(key))
+      }
       .abort(sprintf("Unknown mlr3 learner key \"%s\".", key))
     }
     entry <- list(

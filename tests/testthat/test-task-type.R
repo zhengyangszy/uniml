@@ -32,7 +32,7 @@ test_that("default task types are registered", {
   expect_identical(binary$mlr3_task, "classif")
   expect_identical(
     binary$default_learners,
-    c("lr", "rf", "xgb", "lgb", "nnet", "knn", "cart", "nb")
+    c("lr", "rf", "xgb", "nnet", "knn", "cart", "nb")
   )
   expect_true(all(c("auc", "pr_auc", "brier", "nri", "idi") %in% binary$metrics))
   expect_true(binary$supports_shap)

@@ -72,10 +72,13 @@ spec <- set_evaluation(
 spec
 ```
 
-The built-in learner keys are `lr`, `rf`, `xgb`, `lgb`, `nnet`, `knn`, `cart`,
-and `nb`. Any installed mlr3 classification learner can also be passed directly,
-such as `classif.log_reg`, `classif.svm`, or `classif.lda`. External learners
-use their mlr3 defaults unless a custom search space is registered.
+The built-in learner keys are `lr`, `rf`, `xgb`, `nnet`, `knn`, `cart`, and
+`nb`, plus the optional `log_reg`, `svm`, `lda`, and `qda`. Any installed mlr3
+classification learner can also be passed directly, such as
+`classif.log_reg`, `classif.svm`, or `classif.lda`. Learners from packages that
+are not on CRAN (for example `classif.lightgbm` from `mlr3extralearners`) work
+the same way once that package is installed and loaded; external learners use
+their mlr3 defaults unless a custom search space is registered.
 
 ## Create leakage-safe splits
 

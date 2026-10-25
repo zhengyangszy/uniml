@@ -114,23 +114,17 @@ thin layer on top instead of hiding mlr3:
   `plot_calibration()`, and `plot_confusion()` accept an mlr3 prediction
   directly.
 
-The registry provides eight stable default binary-classification learners:
+The registry provides seven stable default binary-classification learners:
 
 | Key | mlr3 learner |
 | --- | --- |
 | `lr` | `classif.cv_glmnet` |
 | `rf` | `classif.ranger` |
 | `xgb` | `classif.xgboost` |
-| `lgb` | `classif.lightgbm` |
 | `nnet` | `classif.nnet` |
 | `knn` | `classif.kknn` |
 | `cart` | `classif.rpart` |
 | `nb` | `classif.naive_bayes` |
-
-The `lgb` key relies on `mlr3extralearners`, which is not on CRAN and is
-therefore listed in `Suggests`. Install it from GitHub to enable `lgb`
-(`remotes::install_github("mlr-org/mlr3extralearners")`); without it, `lgb` is
-reported as a recorded failure instead of being silently dropped.
 
 It also provides an optional set of common learners that can be requested by
 key but are not installed or tuned by default. These entries use their mlr3
@@ -142,8 +136,6 @@ defaults unless an explicit search space is supplied:
 | `svm` | `classif.svm` | e1071 |
 | `lda` | `classif.lda` | MASS |
 | `qda` | `classif.qda` | MASS |
-| `randomForest` | `classif.randomForest` | randomForest |
-| `gbm` | `classif.gbm` | gbm |
 
 The package is not limited to those keys. Any installed mlr3 classification
 learner can be passed to `set_learners()`. Learners outside the registry use
@@ -156,6 +148,19 @@ spec <- set_learners(
   tune = TRUE
 )
 ```
+
+This is also how you use learners from packages that are not on CRAN, such as
+LightGBM. Install and load the providing package first, then pass the mlr3
+learner key:
+
+```r
+# remotes::install_github("mlr-org/mlr3extralearners")
+library(mlr3extralearners)
+spec <- set_learners(spec, "classif.lightgbm", tune = FALSE)
+```
+
+The retired `lgb`, `randomForest`, and `gbm` shortcuts now fail with a message
+that points at the mlr3 learner key to use instead; nothing else changes.
 
 For a custom search space, register the learner explicitly:
 

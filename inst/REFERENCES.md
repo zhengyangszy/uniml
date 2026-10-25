@@ -60,7 +60,7 @@ directly. DOIs are given where the publisher assigns one.
 | --- | --- | --- |
 | Random forest (ranger) | Wright MN, Ziegler A (2017). ranger: a fast implementation of random forests for high dimensional data in C++ and R. *Journal of Statistical Software*, 77(1), 1-17. doi:10.18637/jss.v077.i01 | `rf` |
 | XGBoost | Chen T, Guestrin C (2016). XGBoost: a scalable tree boosting system. *Proceedings of the 22nd ACM SIGKDD*, 785-794. doi:10.1145/2939672.2939785 | `xgb` |
-| LightGBM | Ke G, Meng Q, Finley T, et al. (2017). LightGBM: a highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30. | `lgb` |
+| LightGBM | Ke G, Meng Q, Finley T, et al. (2017). LightGBM: a highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems*, 30. | `classif.lightgbm`, injected from `mlr3extralearners` |
 | Elastic net | Zou H, Hastie T (2005). Regularization and variable selection via the elastic net. *Journal of the Royal Statistical Society: Series B*, 67(2), 301-320. doi:10.1111/j.1467-9868.2005.00503.x | `lr` |
 | Modern applied statistics | Venables WN, Ripley BD (2002). *Modern Applied Statistics with S*, 4th edition. Springer. doi:10.1007/978-0-387-21706-2 | `nnet`, `knn`, `lda`, `qda`, `nb` |
 

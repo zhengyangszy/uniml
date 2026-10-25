@@ -116,10 +116,12 @@ to end; `multiclass` and `survival` are registered as placeholders and raise a
   explain, default 100) and `bg_n` (background rows, default 100) arguments keep
   the run time bounded, and any other `kernelshap()` argument can be passed
   through `...`.
-* The `lgb` learner (and the optional `randomForest` and `gbm` entries) require
-  `mlr3extralearners`, which is not on CRAN and is therefore listed in
-  `Suggests`. When it is missing, those keys are recorded as failures with an
-  install hint.
+* The `lgb`, `randomForest`, and `gbm` shortcuts are retired: their mlr3
+  learners live in `mlr3extralearners`, which is not on CRAN, so the package can
+  now pass CRAN's dependency checks. The shortcuts fail with a message that
+  names the mlr3 learner key to use instead; install and load
+  `mlr3extralearners` and pass `"classif.lightgbm"` (or `"classif.randomForest"`,
+  `"classif.gbm"`) directly.
 
 ## Workflow
 

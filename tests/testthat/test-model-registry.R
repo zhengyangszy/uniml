@@ -51,9 +51,7 @@ test_that("resolve_learners() supports external mlr3 learner keys", {
 
 test_that("optional common learners are available but remain non-default", {
   skip_if_not_installed("e1071")
-  skip_if_not_installed("randomForest")
-  skip_if_not_installed("gbm")
-  keys <- c("log_reg", "svm", "lda", "qda", "randomForest", "gbm")
+  keys <- c("log_reg", "svm", "lda", "qda")
   data <- make_registry_fixture()
   spec <- uniml_spec(task_type = "binary", outcome = "y", positive = "yes")
   spec <- set_learners(spec, keys, tune = TRUE)
@@ -74,6 +72,18 @@ test_that("optional common learners are available but remain non-default", {
   )))
   expect_false(any(vapply(learners, `[[`, logical(1), "tune")))
   expect_false(any(keys %in% get_task_type("binary")$default_learners))
+})
+
+test_that("retired learner keys point at the mlr3 learner to use instead", {
+  data <- make_registry_fixture()
+  spec <- uniml_spec(task_type = "binary", outcome = "y", positive = "yes")
+  spec <- set_learners(spec, "lgb", tune = FALSE)
+  task <- make_task(data, spec)
+
+  expect_error(
+    resolve_learners(spec, task = task),
+    "classif\\.lightgbm"
+  )
 })
 
 test_that("register_learner() registers custom learners and search spaces", {

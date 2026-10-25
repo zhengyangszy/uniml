@@ -494,7 +494,7 @@ plot_shap_force.default <- function(x, ...) {
       "ppv", "npv", "f1", "f2", "youden", "plr", "nlr", "dor",
       "balanced_accuracy", "kappa", "brier", "nri", "idi"
     ),
-    default_learners = c("lr", "rf", "xgb", "lgb", "nnet", "knn", "cart", "nb"),
+    default_learners = c("lr", "rf", "xgb", "nnet", "knn", "cart", "nb"),
     supports_shap = TRUE,
     supports_dca = TRUE,
     supports_calibration = TRUE,

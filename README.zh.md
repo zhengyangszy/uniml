@@ -32,11 +32,18 @@
 remotes::install_github("zhengyangszy/uniml")
 ```
 
-`lgb`（LightGBM）需要额外安装 `mlr3extralearners`（不在 CRAN 上）：
+内置 7 个模型（`lr`/`rf`/`xgb`/`nnet`/`knn`/`cart`/`nb`）和 4 个可选模型
+（`log_reg`/`svm`/`lda`/`qda`）。**任何 mlr3 分类学习器都能直接用**，包括不在
+CRAN 上的扩展包，先 `library()` 再按学习器名传入即可：
 
 ```r
-remotes::install_github("mlr-org/mlr3extralearners")
+# remotes::install_github("mlr-org/mlr3extralearners")
+library(mlr3extralearners)
+spec <- set_learners(spec, "classif.lightgbm", tune = FALSE)
 ```
+
+（旧版的 `lgb` / `randomForest` / `gbm` 快捷键已移除，现在用它们会提示你改用
+对应的 mlr3 学习器名。）
 
 ## 快速上手
 

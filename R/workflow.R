@@ -93,6 +93,7 @@
     balance = preprocess$balance,
     m = preprocess$m,
     outcome = spec$outcome,
+    vars = preprocess$vars,
     ordered_as = spec$ordered_as,
     seed = spec$seed,
     verbose = spec$verbose

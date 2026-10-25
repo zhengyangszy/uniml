@@ -36,6 +36,14 @@ binary outcomes, a matrix of survival probabilities for survival ones).
 \item \code{metrics(value, truth, spec, metrics, context)}: returns a named list.
 \code{context} carries stage-specific information such as the threshold.
 }
+
+Two hooks are optional and default to \code{\link[=train_model]{train_model()}} and \code{\link[=tune_model]{tune_model()}}:
+\itemize{
+\item \code{train(task, learner, params, spec)}: returns a fitted learner.
+\item \code{tune(task, learner_spec, spec)}: returns a list with at least \code{learner},
+\code{best_params}, \code{best_metric}, and \code{status}, like \code{\link[=tune_model]{tune_model()}} does.
+A task type whose learners are not \code{TaskClassif} learners supplies both.
+}
 }
 \examples{
 hooks <- names(workflow_adapter("binary"))

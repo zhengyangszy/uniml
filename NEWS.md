@@ -1,3 +1,16 @@
+# uniml 0.3.1
+
+Two additions that a task type with more than one outcome column needs.
+
+* `set_preprocess()` gains `vars`, naming the columns the preprocessor may
+  transform. Columns outside it are passed through untouched, so a task type can
+  keep its own outcome columns out of scaling and encoding. `workflow_engine()`
+  forwards it to `fit_preprocessor()`.
+* `register_workflow_adapter()` accepts two optional hooks, `train()` and
+  `tune()`, which default to `train_model()` and `tune_model()`. A task type whose
+  learners are not `TaskClassif` learners supplies both, and the engine fits and
+  tunes them without knowing what they are.
+
 # uniml 0.3.0
 
 The workflow is now split into a task-type-neutral engine and a per-task-type

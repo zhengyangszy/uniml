@@ -13,6 +13,7 @@ set_preprocess(
   ordered_as = NULL,
   outcome_na_action = NULL,
   balance = NULL,
+  vars = NULL,
   impute_args = NULL,
   scale_args = NULL,
   encode_args = NULL,
@@ -36,6 +37,11 @@ set_preprocess(
 \item{outcome_na_action}{How to handle missing outcome values.}
 
 \item{balance}{Class-balance method.}
+
+\item{vars}{Optional character vector naming the columns the preprocessor may
+transform. Columns outside it are passed through untouched, which is how a
+task type keeps its own outcome columns (a survival time and status, for
+example) out of scaling and encoding.}
 
 \item{impute_args}{Named list forwarded to \code{\link[=fit_imputer]{fit_imputer()}}.}
 

@@ -15,6 +15,13 @@
   c("prepare", "make_task", "predict", "pool", "metric_names", "metrics")
 }
 
+# Optional hooks. `train` and `tune` default to the classification helpers, which
+# is why a task type only overrides them when its learners are not `TaskClassif`
+# learners.
+.workflow_adapter_optional_hooks <- function() {
+  c("train", "tune")
+}
+
 #' Register a workflow adapter for a task type
 #'
 #' The workflow engine ([workflow_engine()]) is shared across task types. What a
@@ -34,6 +41,13 @@
 #' * `metric_names(spec)`: the metric names the workflow reports.
 #' * `metrics(value, truth, spec, metrics, context)`: returns a named list.
 #'   `context` carries stage-specific information such as the threshold.
+#'
+#' Two hooks are optional and default to [train_model()] and [tune_model()]:
+#'
+#' * `train(task, learner, params, spec)`: returns a fitted learner.
+#' * `tune(task, learner_spec, spec)`: returns a list with at least `learner`,
+#'   `best_params`, `best_metric`, and `status`, like [tune_model()] does.
+#'   A task type whose learners are not `TaskClassif` learners supplies both.
 #'
 #' @param task_type Task-type id, such as `"binary"`.
 #' @param adapter A list of adapter functions. See Details.
@@ -61,6 +75,14 @@ register_workflow_adapter <- function(task_type, adapter, overwrite = FALSE) {
   for (hook in .workflow_adapter_hooks()) {
     if (!is.function(adapter[[hook]])) {
       .abort(sprintf("The workflow adapter hook \"%s\" must be a function.", hook))
+    }
+  }
+  for (hook in .workflow_adapter_optional_hooks()) {
+    if (!is.null(adapter[[hook]]) && !is.function(adapter[[hook]])) {
+      .abort(sprintf(
+        "The optional workflow adapter hook \"%s\" must be NULL or a function.",
+        hook
+      ))
     }
   }
   adapter$task_type <- task_type

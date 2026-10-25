@@ -1219,6 +1219,10 @@ print.summary.uniml_result <- function(x, ...) {
 #' @param ordered_as Ordered-factor handling.
 #' @param outcome_na_action How to handle missing outcome values.
 #' @param balance Class-balance method.
+#' @param vars Optional character vector naming the columns the preprocessor may
+#'   transform. Columns outside it are passed through untouched, which is how a
+#'   task type keeps its own outcome columns (a survival time and status, for
+#'   example) out of scaling and encoding.
 #' @param impute_args Named list forwarded to [fit_imputer()].
 #' @param scale_args Named list forwarded to [fit_scale()].
 #' @param encode_args Named list forwarded to [fit_encode()].
@@ -1238,9 +1242,13 @@ print.summary.uniml_result <- function(x, ...) {
 #' @export
 set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode = NULL,
                            ordered_as = NULL, outcome_na_action = NULL, balance = NULL,
+                           vars = NULL,
                            impute_args = NULL, scale_args = NULL, encode_args = NULL,
                            balance_args = NULL, ...) {
   .validate_spec_object(spec)
+  if (!is.null(vars)) {
+    .assert_character_vector(vars, "vars")
+  }
   .assert_step_args(impute_args, .allowed_step_args("impute"), "impute_args")
   .assert_step_args(scale_args, .allowed_step_args("scale"), "scale_args")
   .assert_step_args(encode_args, .allowed_step_args("encode"), "encode_args")
@@ -1253,6 +1261,7 @@ set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode =
     ordered_as = ordered_as,
     outcome_na_action = outcome_na_action,
     balance = balance,
+    vars = vars,
     impute_args = impute_args,
     scale_args = scale_args,
     encode_args = encode_args,

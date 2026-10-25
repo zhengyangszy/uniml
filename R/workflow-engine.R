@@ -140,15 +140,19 @@ workflow_engine <- function(spec, train, validation, test = NULL, external = NUL
       }
       imputation_task <- adapter$make_task(imputation_train, spec, features)
       tuned <- tryCatch(
-        tune_model(
-          imputation_task,
-          learner_spec,
-          resampling = .workflow_tuning_resampling(spec),
-          tuner = spec$tuning$tuner,
-          terminator = .workflow_tuning_terminator(spec),
-          nested = spec$tuning$nested,
-          seed = spec$seed
-        ),
+        if (is.null(adapter$tune)) {
+          tune_model(
+            imputation_task,
+            learner_spec,
+            resampling = .workflow_tuning_resampling(spec),
+            tuner = spec$tuning$tuner,
+            terminator = .workflow_tuning_terminator(spec),
+            nested = spec$tuning$nested,
+            seed = spec$seed
+          )
+        } else {
+          adapter$tune(imputation_task, learner_spec, spec)
+        },
         error = function(e) e
       )
       if (inherits(tuned, "error") || identical(tuned$status, "failed")) {
@@ -163,7 +167,11 @@ workflow_engine <- function(spec, train, validation, test = NULL, external = NUL
       tuned$metric <- spec$tuning$metric
       tuned$learner_key <- key
       learner <- tryCatch(
-        train_model(imputation_task, tuned$learner, params = tuned$best_params),
+        if (is.null(adapter$train)) {
+          train_model(imputation_task, tuned$learner, params = tuned$best_params)
+        } else {
+          adapter$train(imputation_task, tuned$learner, tuned$best_params, spec)
+        },
         error = function(e) e
       )
       if (inherits(learner, "error")) {

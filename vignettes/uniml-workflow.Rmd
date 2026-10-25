@@ -172,6 +172,37 @@ plot_dca(result)
 plot_confusion(result, models = "best")
 ```
 
+## Validation, test, and external performance
+
+The three held-out sets answer different questions, so they are reported
+separately and never pooled. Model selection uses the validation set only; the
+test set and the external cohort are reporting-only.
+
+```{r role-table}
+role_table <- subset(
+  result$metrics,
+  set %in% c("validation", "test", "external"),
+  select = c("model", "set", "probability", "auc", "brier", "sensitivity",
+             "specificity")
+)
+role_table[role_table$probability == "calibrated", ]
+```
+
+Discrimination on the external cohort, which took no part in training, feature
+selection, or calibration:
+
+```{r external-roc, fig.cap = "ROC curves on the external cohort."}
+plot_roc(result, set = "external")
+```
+
+Comparing the calibration curves of the validation and external cohorts shows
+whether the probabilities travel; a model that only looks good on the
+development split is usually overfitted to it.
+
+```{r external-calibration, fig.cap = "Calibration on the external cohort."}
+plot_calibration(result, set = "external")
+```
+
 ## Thresholds, reclassification, and explainability
 
 The classification threshold is derived from out-of-fold training predictions,

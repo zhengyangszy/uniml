@@ -2,6 +2,8 @@
 
 **English** | [简体中文](README.zh.md)
 
+[![R-CMD-check](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml)
+
 `uniml` is a unified predictive modeling toolkit for binary classification. It
 chains preprocessing, feature selection, model training and tuning, evaluation,
 visualization, and SHAP interpretability behind one small set of objects, while

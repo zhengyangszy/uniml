@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+[![R-CMD-check](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml)
+
 `uniml` 是一个面向**二分类预测模型**的统一建模工具包。它把数据切分、缺失值填补、
 特征筛选、模型训练与调参、性能评价、可视化、SHAP 可解释性串成一条流水线，同时强制
 区分「用来拟合模型的数据」和「用来评价模型的数据」，避免信息泄漏。

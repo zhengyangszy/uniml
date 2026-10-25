@@ -36,6 +36,13 @@ calibration, evaluation, and ranking into a single \code{uniml_result}. The
 validation and optional test sets never take part in fitting; they are only
 transformed with parameters estimated on the training data.
 }
+\details{
+The pipeline is the binary one. Its fold, preprocessing, tuning, metric, and
+ranking layers are already dispatched by task type (see \code{\link[=task_type_spec]{task_type_spec()}} and
+\code{\link[=rank_models]{rank_models()}}), but the reporting stages below it are defined for a single
+probability per patient, so other task types are rejected instead of being
+run in a reduced form.
+}
 \examples{
 \dontrun{
 data <- data.frame(

@@ -4,7 +4,12 @@
 \alias{rank_models}
 \title{Rank models on a comparison set}
 \usage{
-rank_models(x, select_on = "auto", best_model_metric = "composite")
+rank_models(
+  x,
+  select_on = "auto",
+  best_model_metric = "composite",
+  task_type = "auto"
+)
 }
 \arguments{
 \item{x}{An \code{uniml_result} object or a metric data frame.}
@@ -14,6 +19,10 @@ rank_models(x, select_on = "auto", best_model_metric = "composite")
 the test set stays reporting-only whenever a validation set exists.}
 
 \item{best_model_metric}{Metric used for ranking, or \code{"composite"}.}
+
+\item{task_type}{Task type whose composite metric set is used, or \code{"auto"}.
+\code{"auto"} reads the task type from a \code{uniml_result} and otherwise assumes
+\code{"binary"}, which keeps the historical behaviour for plain metric tables.}
 }
 \value{
 A data frame with model scores, ranks, metric, and comparison set.

@@ -705,13 +705,37 @@
   )
 }
 
+# Task-type seam: this is the only place where the workflow turns predictions
+# into a row of metrics. Binary outcomes reduce a patient to one probability;
+# task types whose prediction is not a single probability (survival time points,
+# distributions) have to contribute their own arm here rather than editing the
+# fold loop.
+.workflow_metric_values <- function(probs, truth, threshold, spec, metrics) {
+  if (identical(spec$task_type, "binary")) {
+    return(.calc_binary_metrics(
+      probs = probs,
+      truth = truth,
+      threshold = threshold,
+      positive = spec$positive,
+      metrics = metrics
+    ))
+  }
+  .abort(sprintf(
+    paste(
+      "The workflow has no metric adapter for task type \"%s\".",
+      "Add one to `.workflow_metric_values()` in R/workflow.R."
+    ),
+    spec$task_type
+  ))
+}
+
 .workflow_metric_row <- function(probs, truth, threshold, spec, model, set,
                                  probability) {
-  values <- .calc_binary_metrics(
+  values <- .workflow_metric_values(
     probs = probs,
     truth = truth,
     threshold = threshold,
-    positive = spec$positive,
+    spec = spec,
     metrics = .workflow_metric_names()
   )
   row <- data.frame(
@@ -1354,11 +1378,11 @@
                       conditionMessage(predicted))
       next
     }
-    values <- .calc_binary_metrics(
+    values <- .workflow_metric_values(
       probs = predicted$prob,
       truth = truth,
       threshold = threshold,
-      positive = spec$positive,
+      spec = spec,
       metrics = metric_names
     )
     row <- data.frame(
@@ -1877,6 +1901,12 @@
 #' validation and optional test sets never take part in fitting; they are only
 #' transformed with parameters estimated on the training data.
 #'
+#' The pipeline is the binary one. Its fold, preprocessing, tuning, metric, and
+#' ranking layers are already dispatched by task type (see [task_type_spec()] and
+#' [rank_models()]), but the reporting stages below it are defined for a single
+#' probability per patient, so other task types are rejected instead of being
+#' run in a reduced form.
+#'
 #' @param spec A `uniml_spec` object.
 #' @param train Training data frame.
 #' @param validation Validation data frame.
@@ -1922,10 +1952,13 @@ run_workflow <- function(spec, train, validation, test = NULL,
   if (!identical(spec$task_type, "binary")) {
     .abort(sprintf(
       paste(
-        "`run_workflow()` currently supports the \"binary\" task type only;",
-        "%s tasks are modelled layer by layer for now.",
-        "Use `as_uniml_data()`, `make_task()`, `train_model()`, `tune_model()`,",
-        "and `calc_metrics()` directly, or see `vignette(\"uniml-multiclass\")`."
+        "`run_workflow()` reports the \"binary\" pipeline only; it cannot evaluate",
+        "a \"%s\" outcome. Thresholds, calibration, DeLong/Hosmer-Lemeshow tests,",
+        "NRI/IDI, and decision curves are defined for one probability per patient.",
+        "The fold, preprocessing, tuning, metric, and ranking layers already",
+        "dispatch on task type. Use `as_uniml_data()`, `make_task()`,",
+        "`train_model()`, `tune_model()`, `calc_metrics()` and `rank_models()`",
+        "directly, or see `vignette(\"uniml-multiclass\")`."
       ),
       spec$task_type
     ))

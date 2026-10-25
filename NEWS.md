@@ -33,6 +33,26 @@ layer level; the full workflow is still binary-only and says so.
   instead of half-running: its prediction table, thresholds, calibrators, and
   post-model tests all assume a single probability column.
 
+## Task-type seams
+
+These are the two places where a task type used to be hard-coded to the binary
+case. Both are now declared by the task type itself, so the next task type can be
+added without editing the callers.
+
+* `task_type_spec()` gains `composite_metrics`, the metric names that
+  `rank_models()` averages into its default composite score. Binary declares
+  AUC, sensitivity, specificity, F2, balanced accuracy, and Youden's index;
+  multiclass declares AUC, accuracy, balanced accuracy, and F1.
+* `rank_models()` gains `task_type = "auto"`. It reads the task type from a
+  `uniml_result` and otherwise assumes `"binary"`, so ranking a multiclass metric
+  table is now correct instead of quietly averaging two-class metrics. A task
+  type that declares no composite set returns an error asking for an explicit
+  `best_model_metric` rather than falling back to the binary one.
+* The workflow no longer calls the binary metric calculator from two places.
+  `.workflow_metric_values()` is the single point that turns a prediction into a
+  metric row, and it names itself when a task type has no adapter, so the next
+  task type has one obvious place to plug in instead of editing the fold loop.
+
 # uniml 0.1.0
 
 First release. The binary-classification stack is implemented end to end;

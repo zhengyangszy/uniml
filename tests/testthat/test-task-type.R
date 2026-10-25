@@ -90,6 +90,37 @@ test_that("register_task_type() enforces overwrite", {
   expect_false(get_task_type("uniml_dup_type")$implemented)
 })
 
+test_that("composite ranking metrics are declared by the task type", {
+  # A descriptor built by hand carries no composite set unless asked to.
+  plain <- task_type_spec(id = "plain_type", mlr3_task = "classif")
+  expect_identical(plain$composite_metrics, character())
+  expect_error(
+    task_type_spec(id = "x", composite_metrics = 1),
+    "composite_metrics"
+  )
+
+  expect_identical(
+    get_task_type("binary")$composite_metrics,
+    c("auc", "sensitivity", "specificity", "f2", "balanced_accuracy", "youden")
+  )
+  expect_identical(
+    get_task_type("multiclass")$composite_metrics,
+    c("auc", "accuracy", "balanced_accuracy", "f1")
+  )
+  # Survival declares its own metrics when it is implemented, so an empty set
+  # must not silently fall back to the binary one.
+  expect_identical(get_task_type("survival")$composite_metrics, character())
+
+  # Every declared composite metric must be a metric the task type reports.
+  for (id in list_task_types()) {
+    declared <- get_task_type(id)
+    expect_true(
+      all(declared$composite_metrics %in% declared$metrics),
+      info = id
+    )
+  }
+})
+
 test_that("analysis generics dispatch by task type", {
   binary <- structure(
     list(

@@ -56,6 +56,47 @@ test_that("rank_models() handles composite, lower-is-better, and missing metrics
   expect_true(all(is.na(ranked$rank)))
 })
 
+test_that("rank_models() uses the composite metric set of the task type", {
+  metrics <- data.frame(
+    model = c("a", "b"),
+    set = "validation",
+    auc = c(0.90, 0.84),
+    accuracy = c(0.70, 0.88),
+    balanced_accuracy = c(0.86, 0.80),
+    f1 = c(0.66, 0.86),
+    stringsAsFactors = FALSE
+  )
+  composite <- c("auc", "accuracy", "balanced_accuracy", "f1")
+  expected <- rowMeans(metrics[, composite])
+
+  ranked <- rank_models(metrics, task_type = "multiclass")
+  expect_equal(ranked$score, expected[match(ranked$model, metrics$model)])
+  expect_identical(ranked$model[ranked$rank == 1L], "b")
+
+  # The binary set averages a different subset of these columns, which is why
+  # the task type has to travel with the metrics.
+  binary <- rank_models(metrics)
+  expect_identical(binary$model[binary$rank == 1L], "a")
+
+  # A `uniml_result` carries the task type in `data_info`.
+  result <- assemble_result(
+    data_info = list(task_type = "multiclass", outcome = "y", n_train = 100L),
+    metrics = metrics
+  )
+  expect_equal(rank_models(result)$score, ranked$score)
+  expect_identical(result$ranking$score, ranked$score)
+
+  # A registered task type that declares no composite set asks for an explicit
+  # metric instead of quietly ranking on the binary one.
+  register_task_type(task_type_spec(
+    id = "uniml_no_composite_type", mlr3_task = "classif"
+  ))
+  expect_error(
+    rank_models(metrics, task_type = "uniml_no_composite_type"),
+    "no composite metric"
+  )
+})
+
 test_that("rank_models() validates explicit missing comparison sets", {
   metrics <- make_metrics_fixture()
   expect_error(

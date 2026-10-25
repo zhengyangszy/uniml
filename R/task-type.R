@@ -15,6 +15,9 @@
 #' @param outcome_class Human-readable outcome shape.
 #' @param positive Whether the positive outcome class must be specified.
 #' @param metrics Supported metric names.
+#' @param composite_metrics Metric names averaged into the composite ranking
+#'   score used by [rank_models()]. Registered task types that leave this empty
+#'   are ranked on an explicit metric only.
 #' @param default_learners Default learner keys.
 #' @param supports_shap Whether SHAP explanations are supported.
 #' @param supports_dca Whether decision-curve analysis is supported.
@@ -27,6 +30,7 @@
 #' task_type_spec(id = "binary", mlr3_task = "classif", metrics = "auc")
 task_type_spec <- function(id, mlr3_task = NULL, outcome_class = NULL,
                            positive = TRUE, metrics = character(),
+                           composite_metrics = character(),
                            default_learners = character(),
                            supports_shap = FALSE, supports_dca = FALSE,
                            supports_calibration = FALSE, implemented = TRUE) {
@@ -37,6 +41,7 @@ task_type_spec <- function(id, mlr3_task = NULL, outcome_class = NULL,
       outcome_class = outcome_class,
       positive = positive,
       metrics = metrics,
+      composite_metrics = composite_metrics,
       default_learners = default_learners,
       supports_shap = supports_shap,
       supports_dca = supports_dca,
@@ -63,7 +68,7 @@ validate_uniml_task_type <- function(x) {
   }
   required <- c(
     "id", "mlr3_task", "outcome_class", "positive", "metrics",
-    "default_learners", "supports_shap", "supports_dca",
+    "composite_metrics", "default_learners", "supports_shap", "supports_dca",
     "supports_calibration", "implemented"
   )
   missing_fields <- setdiff(required, names(x))
@@ -82,6 +87,7 @@ validate_uniml_task_type <- function(x) {
   }
   .assert_scalar_logical(x$positive, "positive")
   .assert_character_vector(x$metrics, "metrics")
+  .assert_character_vector(x$composite_metrics, "composite_metrics")
   .assert_character_vector(x$default_learners, "default_learners")
   .assert_scalar_logical(x$supports_shap, "supports_shap")
   .assert_scalar_logical(x$supports_dca, "supports_dca")
@@ -103,6 +109,7 @@ print.uniml_task_type <- function(x, ...) {
   cat(sprintf("id: %s (implemented: %s)\n", x$id, x$implemented))
   cat(sprintf("mlr3_task: %s\n", if (is.null(x$mlr3_task)) "none" else x$mlr3_task))
   cat(sprintf("metrics: %d\n", length(x$metrics)))
+  cat(sprintf("composite_metrics: %d\n", length(x$composite_metrics)))
   cat(sprintf(
     "default_learners: %s\n",
     if (length(x$default_learners)) paste(x$default_learners, collapse = ", ") else "none"
@@ -501,6 +508,9 @@ plot_shap_force.default <- function(x, ...) {
       "balanced_accuracy", "kappa", "brier", "nri", "idi"
     ),
     default_learners = c("lr", "rf", "xgb", "nnet", "knn", "cart", "nb"),
+    composite_metrics = c(
+      "auc", "sensitivity", "specificity", "f2", "balanced_accuracy", "youden"
+    ),
     supports_shap = TRUE,
     supports_dca = TRUE,
     supports_calibration = TRUE,
@@ -517,6 +527,7 @@ plot_shap_force.default <- function(x, ...) {
       "sensitivity", "specificity", "ppv", "npv", "f1"
     ),
     default_learners = c("lr", "rf", "xgb", "nnet", "knn", "cart", "nb"),
+    composite_metrics = c("auc", "accuracy", "balanced_accuracy", "f1"),
     supports_shap = TRUE,
     supports_dca = FALSE,
     supports_calibration = FALSE,

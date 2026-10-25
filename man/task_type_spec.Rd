@@ -10,6 +10,7 @@ task_type_spec(
   outcome_class = NULL,
   positive = TRUE,
   metrics = character(),
+  composite_metrics = character(),
   default_learners = character(),
   supports_shap = FALSE,
   supports_dca = FALSE,
@@ -27,6 +28,10 @@ task_type_spec(
 \item{positive}{Whether the positive outcome class must be specified.}
 
 \item{metrics}{Supported metric names.}
+
+\item{composite_metrics}{Metric names averaged into the composite ranking
+score used by \code{\link[=rank_models]{rank_models()}}. Registered task types that leave this empty
+are ranked on an explicit metric only.}
 
 \item{default_learners}{Default learner keys.}
 

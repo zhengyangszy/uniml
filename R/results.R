@@ -41,8 +41,12 @@
   }
 }
 
-.composite_metric_names <- function() {
-  c("auc", "sensitivity", "specificity", "f2", "balanced_accuracy", "youden")
+# Composite ranking metrics are declared by the task type (L1), so a metric set
+# is never assumed to be the binary one. A task type that declares none is ranked
+# on an explicit metric only; `rank_models()` reports that instead of guessing.
+.composite_metric_names <- function(task_type = "binary") {
+  .assert_scalar_character(task_type, "task_type")
+  get_task_type(task_type)$composite_metrics
 }
 
 .comparison_set <- function(metrics, select_on = "auto") {
@@ -113,12 +117,18 @@
   table
 }
 
-.ranking_score <- function(metrics, metric = "composite") {
+.ranking_score <- function(metrics, metric = "composite", task_type = "binary") {
   .assert_scalar_character(metric, "best_model_metric")
   if (identical(metric, "composite")) {
-    candidates <- intersect(.composite_metric_names(), names(metrics))
+    candidates <- intersect(.composite_metric_names(task_type), names(metrics))
     if (length(candidates) == 0L) {
-      return(rep(NA_real_, nrow(metrics)))
+      .abort(sprintf(
+        paste(
+          "Task type \"%s\" declares no composite metric that is present in these",
+          "metrics; set `best_model_metric` to an explicit metric instead."
+        ),
+        task_type
+      ))
     }
     values <- matrix(
       as.numeric(as.matrix(metrics[, candidates, drop = FALSE])),
@@ -136,6 +146,36 @@
   as.numeric(metrics[[metric]])
 }
 
+.data_info_task_type <- function(data_info) {
+  if (is.null(data_info) || !is.list(data_info)) {
+    return(NULL)
+  }
+  type <- data_info$task_type
+  if (is.null(type) && !is.null(data_info$spec)) {
+    type <- data_info$spec$task_type
+  }
+  if (is.null(type) || !is.character(type) || length(type) != 1L || !nzchar(type)) {
+    return(NULL)
+  }
+  type
+}
+
+# The task type decides which metrics are averaged into the composite score. A
+# `uniml_result` carries it in `data_info`; a bare metric table falls back to
+# "binary", which is what `rank_models()` did before multiclass existed.
+.ranking_task_type <- function(x, task_type) {
+  if (!identical(task_type, "auto")) {
+    return(task_type)
+  }
+  if (inherits(x, "uniml_result")) {
+    type <- .data_info_task_type(x$data_info)
+    if (!is.null(type)) {
+      return(type)
+    }
+  }
+  "binary"
+}
+
 #' Rank models on a comparison set
 #'
 #' Ranks one row per model using either a single metric or the default
@@ -148,6 +188,9 @@
 #'   `"auto"` uses the validation set when present and otherwise the test set, so
 #'   the test set stays reporting-only whenever a validation set exists.
 #' @param best_model_metric Metric used for ranking, or `"composite"`.
+#' @param task_type Task type whose composite metric set is used, or `"auto"`.
+#'   `"auto"` reads the task type from a `uniml_result` and otherwise assumes
+#'   `"binary"`, which keeps the historical behaviour for plain metric tables.
 #'
 #' @return A data frame with model scores, ranks, metric, and comparison set.
 #' @export
@@ -159,13 +202,15 @@
 #'   balanced_accuracy = c(0.71, 0.75), youden = c(0.42, 0.49)
 #' )
 #' rank_models(metrics)
-rank_models <- function(x, select_on = "auto", best_model_metric = "composite") {
+rank_models <- function(x, select_on = "auto", best_model_metric = "composite",
+                        task_type = "auto") {
   if (inherits(x, "uniml_result")) {
     validate_uniml_result(x)
     metrics <- x$metrics
   } else {
     metrics <- x
   }
+  task_type <- .ranking_task_type(x, task_type)
   table <- .metrics_for_ranking(metrics, select_on = select_on)
   if (nrow(table) == 0L) {
     return(data.frame(
@@ -179,7 +224,7 @@ rank_models <- function(x, select_on = "auto", best_model_metric = "composite") 
     ))
   }
   score <- tryCatch(
-    .ranking_score(table, metric = best_model_metric),
+    .ranking_score(table, metric = best_model_metric, task_type = task_type),
     error = function(e) e
   )
   if (inherits(score, "error")) {
@@ -235,7 +280,8 @@ rank_models <- function(x, select_on = "auto", best_model_metric = "composite") 
   data_info
 }
 
-.assemble_ranking <- function(metrics, ranking, select_on, best_model_metric) {
+.assemble_ranking <- function(metrics, ranking, select_on, best_model_metric,
+                              task_type = "binary") {
   if (!is.null(ranking)) {
     return(ranking)
   }
@@ -246,7 +292,8 @@ rank_models <- function(x, select_on = "auto", best_model_metric = "composite") 
     rank_models(
       metrics,
       select_on = select_on,
-      best_model_metric = best_model_metric
+      best_model_metric = best_model_metric,
+      task_type = task_type
     ),
     error = function(e) NULL
   )
@@ -308,11 +355,16 @@ assemble_result <- function(data_info = NULL, preprocess = NULL, selection = NUL
   if (is.null(meta$session_info)) {
     meta$session_info <- utils::sessionInfo()
   }
+  ranking_task_type <- .data_info_task_type(data_info)
+  if (is.null(ranking_task_type)) {
+    ranking_task_type <- "binary"
+  }
   ranking <- .assemble_ranking(
     metrics = .as_result_table(metrics),
     ranking = .as_result_table(ranking),
     select_on = select_on,
-    best_model_metric = best_model_metric
+    best_model_metric = best_model_metric,
+    task_type = ranking_task_type
   )
   new_uniml_result(
     data_info = .assemble_data_info(data_info),

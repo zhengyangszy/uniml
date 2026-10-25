@@ -145,6 +145,38 @@ tuned$status
 tuned$best_params
 ```
 
+## Comparing models
+
+`rank_models()` averages a composite score whose metric set is declared by the
+task type, so a multiclass comparison is not ranked on two-class numbers. The
+multiclass composite is AUC, accuracy, balanced accuracy, and macro F1.
+
+```{r rank}
+score_row <- function(model, prediction) {
+  values <- calc_metrics(prediction)
+  data.frame(
+    model = model,
+    set = "validation",
+    auc = values$auc,
+    accuracy = values$accuracy,
+    balanced_accuracy = values$balanced_accuracy,
+    f1 = values$f1,
+    stringsAsFactors = FALSE
+  )
+}
+
+forest <- train_model(task, mlr3::lrn("classif.ranger", predict_type = "prob"))
+comparison <- rbind(
+  score_row("cart", prediction),
+  score_row("rf", forest$predict(task))
+)
+comparison
+rank_models(comparison, task_type = "multiclass")
+```
+
+A plain metric data frame carries no task type, so `task_type` has to be passed;
+a `uniml_result` remembers it for you. Ranking a binary result is unchanged.
+
 ## Figures
 
 Discrimination is shown as one-vs-rest ROC curves, one per class. There is no
@@ -177,7 +209,9 @@ convention that a package should not choose silently.
 * **`run_workflow()`.** The full workflow is binary-only for now: its prediction
   table, thresholds, calibrators, and post-model tests all assume one probability
   column. Calling it on a multiclass specification stops with a message pointing
-  back at this vignette.
+  back at this vignette. The layers underneath it are not binary-only any more —
+  the task, the metrics, and the composite ranking are all declared by the task
+  type — which is why the pieces above can be combined by hand.
 
 ## References
 

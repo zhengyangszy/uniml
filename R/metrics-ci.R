@@ -105,7 +105,8 @@ pool_mi <- function(estimates, variances, level = 0.95) {
   c(
     "auc", "pr_auc", "brier", "accuracy", "sensitivity", "specificity",
     "ppv", "npv", "f1", "f2", "youden", "plr", "nlr", "dor",
-    "balanced_accuracy", "kappa"
+    "balanced_accuracy", "kappa", "calib_slope", "calib_intercept",
+    "calib_large"
   )
 }
 
@@ -163,8 +164,12 @@ pool_mi <- function(estimates, variances, level = 0.95) {
 #' Resamples paired probabilities and labels with replacement, recalculates
 #' the requested binary metrics, and returns percentile confidence intervals.
 #'
-#' @param probs Numeric predicted probabilities.
-#' @param labels Binary truth labels.
+#' @param probs Numeric predicted probabilities, or a numeric matrix with one
+#'   column per class for a multiclass prediction. A matrix switches to the
+#'   multiclass metrics; `threshold`, `threshold_method`, `cost`, and
+#'   `fixed_threshold` are then ignored.
+#' @param labels Binary truth labels, or the observed classes when `probs` is a
+#'   matrix.
 #' @param method Confidence-interval method. Currently `"bootstrap"`.
 #' @param R Number of bootstrap resamples.
 #' @param level Confidence level.
@@ -217,6 +222,19 @@ calc_ci <- function(probs, labels, method = "bootstrap", R = 1000L,
   )
   if (!is.null(threshold)) {
     .assert_scalar_number(threshold, "threshold", min = 0, max = 1)
+  }
+  if (is.matrix(probs)) {
+    # A probability matrix is a multiclass prediction; there is no threshold and
+    # no positive class, so the binary path below does not apply.
+    metric_names <- if (identical(metrics, "all")) NULL else metrics
+    return(.calc_ci_multiclass(
+      probs = probs,
+      truth = labels,
+      R = as.integer(R),
+      level = level,
+      seed = as.integer(seed),
+      metrics = metric_names
+    ))
   }
 
   cleaned <- .clean_binary_inputs(probs, labels, positive = positive)

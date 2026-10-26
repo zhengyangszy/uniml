@@ -91,7 +91,7 @@ workflow_engine <- function(spec, train, validation, test = NULL, external = NUL
 
   processed_train <- imputation_preprocessors[[1L]]$train
   selections <- lapply(imputation_preprocessors, function(preprocessor) {
-    found <- .workflow_select_features(preprocessor$train, spec)
+    found <- .workflow_select_features(preprocessor$train, spec, adapter = adapter)
     if (inherits(found, "error")) {
       stop(found)
     }

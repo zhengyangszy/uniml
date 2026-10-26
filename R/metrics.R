@@ -9,7 +9,8 @@
   c(
     "auc", "pr_auc", "brier", "accuracy", "sensitivity", "specificity",
     "ppv", "npv", "f1", "f2", "youden", "plr", "nlr", "dor",
-    "balanced_accuracy", "kappa"
+    "balanced_accuracy", "kappa", "calib_slope", "calib_intercept",
+    "calib_large"
   )
 }
 
@@ -194,6 +195,15 @@
   }
 
   accuracy <- .ratio_or_na(tp + tn, tp + tn + fp + fn)
+  # The recalibration is two `glm()` fits; skip them unless they were asked for,
+  # so a bootstrap that only wants AUC does not pay for them.
+  wants_calibration <- identical(metrics, "all") ||
+    any(c("calib_slope", "calib_intercept", "calib_large") %in% metrics)
+  calibration <- if (wants_calibration) {
+    .calibration_fit(prob, event)
+  } else {
+    list(intercept = NA_real_, slope = NA_real_, large = NA_real_)
+  }
   sensitivity <- .ratio_or_na(tp, tp + fn)
   specificity <- .ratio_or_na(tn, tn + fp)
   ppv <- .ratio_or_na(tp, tp + fp)
@@ -249,8 +259,7 @@
   }
 
   values <- list(
-    auc = .safe_metric(
-      mlr3measures::auc,
+    auc = .safe_metric(      mlr3measures::auc,
       factor(event, levels = c(0, 1)),
       prob,
       positive = "1"
@@ -275,6 +284,9 @@
     dor = dor,
     balanced_accuracy = balanced_accuracy,
     kappa = kappa,
+    calib_slope = calibration$slope,
+    calib_intercept = calibration$intercept,
+    calib_large = calibration$large,
     tp = as.integer(tp),
     tn = as.integer(tn),
     fp = as.integer(fp),
@@ -314,6 +326,131 @@
   )
 }
 
+#' Calibration intercept and slope
+#'
+#' The two numbers a clinical reader looks for after the calibration plot. Both
+#' come from one logistic recalibration of the predictions,
+#' `logit(observed) = intercept + slope * logit(predicted)`, which is the
+#' convention of Steyerberg and of van Calster's calibration guidance: an ideal
+#' model has slope 1, and the intercept is 0. Calibration-in-the-large is reported
+#' separately, as the intercept of the same model with the slope fixed at 1, so a
+#' systematic over- or under-prediction is not hidden inside a slope away from 1.
+#'
+#' @param probs Predicted probabilities of the positive class.
+#' @param labels Observed outcomes.
+#' @param positive Value of `labels` that means "event".
+#' @param level Confidence level for the interval, or `NULL` for no interval.
+#' @param R Bootstrap resamples used for the interval.
+#' @param seed Random seed for the bootstrap.
+#'
+#' @return A one-row data frame with `calib_intercept`, `calib_slope`,
+#'   `calib_large`, their `lower`/`upper` bounds when `level` is not `NULL`, and
+#'   `n`.
+#' @references
+#' Steyerberg EW (2019). *Clinical Prediction Models: A Practical Approach to
+#' Development, Validation, and Updating*, 2nd edition. Springer.
+#' doi:10.1007/978-3-030-16399-0
+#'
+#' Van Calster B, McLernon DJ, van Smeden M, Wynants L, Steyerberg EW (2019).
+#' Calibration: the Achilles heel of predictive analytics. *BMC Medicine*, 17,
+#' 230. doi:10.1186/s12916-019-1466-7
+#'
+#' Cox DR (1958). Two further applications of a model for binary regression.
+#' *Biometrika*, 45(3-4), 562-565.
+#' @export
+#' @examples
+#' set.seed(1)
+#' probs <- stats::runif(200)
+#' labels <- stats::rbinom(200, 1, probs)
+#' calibration_metrics(probs, labels, level = NULL)
+calibration_metrics <- function(probs, labels, positive = NULL, level = 0.95,
+                                R = 500L, seed = 2026L) {
+  cleaned <- .clean_binary_inputs(probs, labels, positive = positive)
+  event <- cleaned$event
+  prob <- cleaned$prob
+  n <- cleaned$n
+  point <- .calibration_fit(prob, event)
+  out <- data.frame(
+    calib_intercept = point$intercept,
+    calib_slope = point$slope,
+    calib_large = point$large,
+    n = as.integer(n),
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+  if (is.null(level)) {
+    return(out)
+  }
+  .assert_scalar_number(level, "level", min = 0.5, max = 0.999)
+  .assert_scalar_number(R, "R", integer = TRUE, min = 10)
+  .assert_scalar_number(seed, "seed", integer = TRUE, min = 1)
+  set.seed(as.integer(seed))
+  values <- matrix(NA_real_, nrow = as.integer(R), ncol = 3L)
+  for (index in seq_len(as.integer(R))) {
+    sample_index <- sample.int(n, n, replace = TRUE)
+    fit <- .calibration_fit(prob[sample_index], event[sample_index])
+    values[index, ] <- c(fit$intercept, fit$slope, fit$large)
+  }
+  alpha <- (1 - level) / 2
+  bounds <- apply(values, 2L, function(column) {
+    if (all(is.na(column))) {
+      return(c(NA_real_, NA_real_))
+    }
+    stats::quantile(column, probs = c(alpha, 1 - alpha), na.rm = TRUE,
+                    names = FALSE)
+  })
+  out$intercept_lower <- bounds[1L, 1L]
+  out$intercept_upper <- bounds[2L, 1L]
+  out$slope_lower <- bounds[1L, 2L]
+  out$slope_upper <- bounds[2L, 2L]
+  out$large_lower <- bounds[1L, 3L]
+  out$large_upper <- bounds[2L, 3L]
+  out
+}
+
+# One logistic recalibration, plus the slope-fixed intercept. A sample that is too
+# small, has too few events, or separates the outcome returns NA rather than a
+# number nobody should trust: with separation the slope runs off to infinity and
+# the interval would be meaningless.
+.calibration_fit <- function(prob, event) {
+  empty <- list(intercept = NA_real_, slope = NA_real_, large = NA_real_)
+  if (length(prob) < 20L || sum(event == 1L) < 5L || sum(event == 0L) < 5L) {
+    return(empty)
+  }
+  logit <- .safe_logit(prob)
+  fit <- tryCatch(
+    suppressWarnings(stats::glm(event ~ logit, family = stats::binomial())),
+    error = function(e) NULL
+  )
+  if (is.null(fit) || !fit$converged) {
+    return(empty)
+  }
+  coefficients <- stats::coef(fit)
+  if (length(coefficients) < 2L || anyNA(coefficients)) {
+    return(empty)
+  }
+  fitted <- stats::fitted(fit)
+  if (any(fitted <= 1e-08) || any(fitted >= 1 - 1e-08)) {
+    return(empty)
+  }
+  large <- tryCatch(
+    {
+      offset_fit <- suppressWarnings(stats::glm(
+        event ~ 1,
+        offset = logit,
+        family = stats::binomial()
+      ))
+      if (offset_fit$converged) unname(stats::coef(offset_fit)[[1L]]) else NA_real_
+    },
+    error = function(e) NA_real_
+  )
+  list(
+    intercept = unname(coefficients[[1L]]),
+    slope = unname(coefficients[[2L]]),
+    large = large
+  )
+}
+
 #' Calculate binary classification metrics
 #'
 #' Calculates the complete binary metric set used by `uniml`. `x` can be a
@@ -329,6 +466,8 @@
 #'   falling back to the first probability column when the prediction does not
 #'   carry its task.
 #' @param metrics `"all"` or a character vector of metric names.
+#' @param probability Which probability column of a prediction table to score:
+#'   `"raw"` or `"calibrated"`.
 #' @param threshold_method Threshold method used when `threshold` is `NULL`.
 #' @param cost Named false-positive and false-negative cost vector.
 #' @param fixed_threshold Threshold used by the `"fixed"` method.
@@ -357,8 +496,48 @@ calc_metrics.uniml_binary <- function(x, truth = NULL, threshold = NULL,
 
 #' @rdname calc_metrics
 #' @export
-calc_metrics.numeric <- function(x, truth = NULL, threshold = NULL,
-                                 positive = NULL, metrics = "all",
+calc_metrics.data.frame <- function(x, truth = NULL, threshold = NULL,
+                                    positive = NULL, metrics = "all",
+                                    probability = c("raw", "calibrated"),
+                                    threshold_method = "fixed",
+                                    cost = c(fp = 1, fn = 1),
+                                    fixed_threshold = 0.5, ...) {
+  probability <- match.arg(probability)
+  if (!"prob" %in% names(x)) {
+    .abort("`x` must contain a `prob` column.")
+  }
+  prob <- if (identical(probability, "calibrated")) {
+    if (!"calibrated_prob" %in% names(x)) {
+      .abort("`x` has no `calibrated_prob` column.")
+    }
+    x$calibrated_prob
+  } else {
+    x$prob
+  }
+  if (is.null(truth)) {
+    if (!"truth" %in% names(x)) {
+      .abort("`truth` is required when `x` has no `truth` column.")
+    }
+    truth <- x$truth
+  }
+  if (is.null(positive) && "positive" %in% names(x)) {
+    positive <- x$positive[!is.na(x$positive)][[1L]]
+  }
+  .calc_binary_metrics(
+    probs = prob,
+    truth = truth,
+    threshold = threshold,
+    positive = positive,
+    metrics = metrics,
+    threshold_method = threshold_method,
+    cost = cost,
+    fixed_threshold = fixed_threshold
+  )
+}
+
+#' @rdname calc_metrics
+#' @export
+calc_metrics.numeric <- function(x, truth = NULL, threshold = NULL,                                 positive = NULL, metrics = "all",
                                  threshold_method = "fixed",
                                  cost = c(fp = 1, fn = 1),
                                  fixed_threshold = 0.5, ...) {

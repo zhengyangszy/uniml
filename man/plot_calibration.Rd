@@ -22,6 +22,7 @@
   subtitle = NULL,
   caption = NULL,
   set = NULL,
+  annotate = TRUE,
   ...
 )
 
@@ -50,6 +51,11 @@ model and \code{"all"} keeps every model.}
 \item{title, subtitle, caption}{Optional figure labels.}
 
 \item{set}{Data set to plot; defaults to the comparison set used for ranking.}
+
+\item{annotate}{Whether to add the calibration slope, intercept, and
+calibration-in-the-large to the caption. They are computed on the
+predictions themselves, not on the binned points, so they do not depend on
+\code{bins}.}
 
 \item{positive}{Positive class label, used when \code{x} is an mlr3 prediction.}
 }

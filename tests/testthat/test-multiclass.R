@@ -305,3 +305,29 @@ test_that("the workflow metric adapter is the only task-type seam", {
     "No workflow adapter is registered"
   )
 })
+
+test_that("calc_ci() bootstraps the multiclass metrics from a probability matrix", {
+  fixture <- multiclass_prediction()
+  ci <- calc_ci(fixture$prob, fixture$truth, R = 40L, level = 0.95, seed = 7)
+
+  expect_identical(nrow(ci), length(.multiclass_metric_names()))
+  expect_identical(ci$metric, .multiclass_metric_names())
+  expect_true(all(c("metric", "mean", "se", "lower", "upper", "n_effective",
+                    "formatted") %in% names(ci)))
+  expect_true(all(ci$lower <= ci$upper, na.rm = TRUE))
+  expect_true(all(ci$n_effective > 0L))
+  # The point estimate the interval is built around is the one `calc_metrics()`
+  # reports for the same predictions.
+  point <- calc_metrics(fixture$prob, fixture$truth)
+  expect_equal(ci$mean[ci$metric == "accuracy"], point$accuracy, tolerance = 0.1)
+
+  # Asking for a subset keeps the order and the names.
+  few <- calc_ci(fixture$prob, fixture$truth, R = 10L, seed = 1,
+                 metrics = c("brier", "auc"))
+  expect_identical(few$metric, c("brier", "auc"))
+  expect_error(
+    calc_ci(fixture$prob, fixture$truth, R = 5L, metrics = "sensitivity_typo"),
+    "unsupported"
+  )
+})
+

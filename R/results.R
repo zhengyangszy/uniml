@@ -796,6 +796,90 @@ assemble_result <- function(data_info = NULL, preprocess = NULL, selection = NUL
   paths
 }
 
+#' Save and read a fitted result
+#'
+#' `save_result()` writes the whole `uniml_result` — the fitted learners, the
+#' fitted preprocessor, the selected features, and the specification — to a single
+#' file. That file is what someone else needs to score new patients and to compute
+#' their own analyses on it, including the subgroup metrics this package
+#' deliberately does not report.
+#'
+#' The saved object is a plain R object: `readRDS()` reads it, and
+#' [predict_uniml()] scores new data with it. `save_result()` exists so the file
+#' has a version stamp and is validated on the way out and back in, rather than
+#' so it can do something `saveRDS()` cannot.
+#'
+#' @param result A `uniml_result` object.
+#' @param path File to write or read. The `.rds` extension is added when missing.
+#'
+#' @return `save_result()` returns the normalised path; `read_result()` returns
+#'   the `uniml_result`.
+#' @references
+#' R Core Team (2024). *R: A Language and Environment for Statistical Computing*.
+#' Section "Serialization".
+#' @export
+#' @examples
+#' \dontrun{
+#' result <- run_workflow(spec, train, validation)
+#' path <- save_result(result, tempfile(fileext = ".rds"))
+#' restored <- read_result(path)
+#'
+#' # Subgroup analysis is yours to define: score the subgroup, then use the same
+#' # metric function the workflow uses.
+#' subgroup <- validation[validation$age_group == "older", ]
+#' scored <- predict_uniml(restored, subgroup)
+#' calc_metrics(scored, subgroup$y, positive = "yes")
+#' }
+save_result <- function(result, path) {
+  validate_uniml_result(result)
+  .assert_scalar_character(path, "path")
+  if (!grepl("\\.rds$", path, ignore.case = TRUE)) {
+    path <- paste0(path, ".rds")
+  }
+  directory <- dirname(path)
+  if (!dir.exists(directory) &&
+      !dir.create(directory, recursive = TRUE, showWarnings = FALSE)) {
+    .abort(sprintf("Could not create the directory: %s.", directory))
+  }
+  processed <- result
+  attr(processed, "uniml_version") <- as.character(
+    utils::packageVersion("uniml")
+  )
+  saveRDS(processed, path, version = 3)
+  invisible(normalizePath(path, winslash = "/", mustWork = TRUE))
+}
+
+#' @rdname save_result
+#' @export
+read_result <- function(path) {
+  .assert_scalar_character(path, "path")
+  if (!file.exists(path)) {
+    .abort(sprintf("No such file: %s.", path))
+  }
+  result <- tryCatch(
+    readRDS(path),
+    error = function(e) {
+      .abort(sprintf("Could not read %s: %s", path, conditionMessage(e)))
+    }
+  )
+  if (!inherits(result, "uniml_result")) {
+    .abort(sprintf("%s does not contain a `uniml_result`.", path))
+  }
+  validate_uniml_result(result)
+  version <- attr(result, "uniml_version")
+  current <- as.character(utils::packageVersion("uniml"))
+  if (!is.null(version) && !identical(version, current)) {
+    warning(
+      sprintf(
+        "The result was written by uniml %s; this is %s. Re-fit if the layout changed.",
+        version, current
+      ),
+      call. = FALSE
+    )
+  }
+  result
+}
+
 #' Export a uniml result
 #'
 #' Writes the complete result and all available stage tables using the

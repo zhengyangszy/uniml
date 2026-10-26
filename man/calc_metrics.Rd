@@ -3,7 +3,9 @@
 %   R/task-type.R
 \name{calc_metrics.uniml_multiclass}
 \alias{calc_metrics.uniml_multiclass}
+\alias{calc_metrics.matrix}
 \alias{calc_metrics.uniml_binary}
+\alias{calc_metrics.data.frame}
 \alias{calc_metrics.numeric}
 \alias{calc_metrics.PredictionClassif}
 \alias{calc_metrics}
@@ -12,12 +14,27 @@
 \usage{
 \method{calc_metrics}{uniml_multiclass}(x, truth = NULL, metrics = "all", ...)
 
+\method{calc_metrics}{matrix}(x, truth = NULL, metrics = "all", ...)
+
 \method{calc_metrics}{uniml_binary}(
   x,
   truth = NULL,
   threshold = NULL,
   positive = NULL,
   metrics = "all",
+  threshold_method = "fixed",
+  cost = c(fp = 1, fn = 1),
+  fixed_threshold = 0.5,
+  ...
+)
+
+\method{calc_metrics}{data.frame}(
+  x,
+  truth = NULL,
+  threshold = NULL,
+  positive = NULL,
+  metrics = "all",
+  probability = c("raw", "calibrated"),
   threshold_method = "fixed",
   cost = c(fp = 1, fn = 1),
   fixed_threshold = 0.5,
@@ -73,6 +90,9 @@ carry its task.}
 \item{cost}{Named false-positive and false-negative cost vector.}
 
 \item{fixed_threshold}{Threshold used by the \code{"fixed"} method.}
+
+\item{probability}{Which probability column of a prediction table to score:
+\code{"raw"} or \code{"calibrated"}.}
 }
 \value{
 A named list of metrics and confusion-matrix counts.

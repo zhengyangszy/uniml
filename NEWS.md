@@ -1,3 +1,48 @@
+# uniml 0.3.2
+
+The five reporting domains a clinical prediction model is judged on are now all
+reachable from `calc_metrics()`, and a fitted result can be handed to someone else
+without handing them the fitting code.
+
+## Calibration as numbers, not only as a figure
+
+* New `calibration_metrics()` returns the calibration intercept, the calibration
+  slope, and calibration-in-the-large, with percentile bootstrap intervals. They
+  come from one logistic recalibration, `logit(observed) = a + b * logit(predicted)`,
+  which is the convention the calibration literature uses, not the slope of the
+  binned reliability line the package computed internally before.
+* `calc_metrics()` now reports `calib_slope`, `calib_intercept`, and `calib_large`
+  alongside the other binary metrics, and the workflow's bootstrap covers them.
+* `plot_calibration()` adds the three numbers to the caption by default
+  (`annotate = FALSE` turns it off), computed on the predictions rather than on
+  the binned points.
+* Calibration is reported as `NA` when it cannot be estimated: fewer than 20
+  patients, fewer than 5 events or 5 non-events, or separation. A slope that ran
+  to infinity because of separation is not a number anyone should read.
+
+## Confidence intervals for multiclass
+
+* `calc_ci()` accepts a probability matrix and bootstraps the multiclass metric
+  set, so macro one-vs-rest AUC, accuracy, balanced accuracy, kappa, log loss, the
+  multiclass Brier score, and the macro rates all get intervals.
+
+## A result you can hand over
+
+* New `save_result()` and `read_result()` write and read a fitted result with a
+  version stamp and validation on both ends.
+* New `calc_metrics.data.frame()` scores the prediction table that
+  `predict_uniml()` returns, which is how subgroup or other post-hoc analyses are
+  meant to be done: this package does not define subgroups, but it hands you a
+  model and a scorer.
+* New `calc_metrics.matrix()` scores a multiclass probability matrix directly.
+
+## Task-type seam
+
+* New optional adapter hook `features(data, spec)`, and `set_preprocess(vars = )`
+  is honoured when a task type declares no feature selection of its own: the
+  workflow keeps the columns the task type calls features instead of borrowing a
+  classification selector.
+
 # uniml 0.3.1
 
 Two additions that a task type with more than one outcome column needs.

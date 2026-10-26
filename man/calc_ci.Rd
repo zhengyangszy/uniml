@@ -21,9 +21,13 @@ calc_ci(
 )
 }
 \arguments{
-\item{probs}{Numeric predicted probabilities.}
+\item{probs}{Numeric predicted probabilities, or a numeric matrix with one
+column per class for a multiclass prediction. A matrix switches to the
+multiclass metrics; \code{threshold}, \code{threshold_method}, \code{cost}, and
+\code{fixed_threshold} are then ignored.}
 
-\item{labels}{Binary truth labels.}
+\item{labels}{Binary truth labels, or the observed classes when \code{probs} is a
+matrix.}
 
 \item{method}{Confidence-interval method. Currently \code{"bootstrap"}.}
 

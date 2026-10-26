@@ -391,7 +391,29 @@
   ))
 }
 
-.workflow_select_features <- function(data, spec) {
+.workflow_select_features <- function(data, spec, adapter = NULL) {
+  if (length(spec$selection$methods) == 0L) {
+    # A task type with no selection method of its own keeps the columns it calls
+    # features, rather than borrowing a classification method that would screen on
+    # the wrong outcome or pick up its own outcome columns.
+    features <- if (!is.null(adapter) && !is.null(adapter$features)) {
+      as.character(adapter$features(data, spec))
+    } else if (length(spec$preprocess$vars) > 0L) {
+      intersect(as.character(spec$preprocess$vars), names(data))
+    } else {
+      setdiff(names(data), spec$outcome)
+    }
+    features <- intersect(features, names(data))
+    return(.new_selection_result(
+      method = "none",
+      selected_features = features,
+      details = data.frame(
+        feature = features,
+        selected = TRUE,
+        stringsAsFactors = FALSE
+      )
+    ))
+  }
   tryCatch(select_features(data, spec), error = function(e) e)
 }
 

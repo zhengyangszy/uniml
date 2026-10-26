@@ -198,8 +198,85 @@
   .metric_list(values, metrics)
 }
 
-.calc_metrics_uniml_multiclass <- function(x, truth = NULL, metrics = "all", ...) {
-  if (!is.list(x) || is.null(x$prob)) {
+# Bootstrap intervals for the multiclass metrics. A resample that loses a class,
+# or whose one-vs-rest AUC is undefined, contributes a missing value rather than
+# an error, and `n_effective` counts the resamples that produced a number.
+.calc_ci_multiclass <- function(probs, truth, R = 1000L, level = 0.95,
+                                seed = 123L, metrics = NULL) {
+  cleaned <- .clean_multiclass_inputs(probs, truth)
+  prob <- cleaned$prob
+  observed <- cleaned$truth
+  n <- cleaned$n
+  metric_names <- metrics %||% .multiclass_metric_names()
+  unknown <- setdiff(metric_names, .multiclass_metric_names())
+  if (length(unknown) > 0L) {
+    .abort(sprintf(
+      "`metrics` contains unsupported values: %s.",
+      paste(unknown, collapse = ", ")
+    ))
+  }
+  point <- .calc_multiclass_metrics(prob, observed, metrics = metric_names)
+  values <- matrix(
+    NA_real_,
+    nrow = as.integer(R),
+    ncol = length(metric_names),
+    dimnames = list(NULL, metric_names)
+  )
+  set.seed(as.integer(seed))
+  for (index in seq_len(as.integer(R))) {
+    sample_index <- sample.int(n, n, replace = TRUE)
+    resample <- tryCatch(
+      .calc_multiclass_metrics(
+        prob[sample_index, , drop = FALSE],
+        observed[sample_index],
+        metrics = metric_names
+      ),
+      error = function(e) NULL
+    )
+    if (is.null(resample)) {
+      next
+    }
+    values[index, ] <- vapply(
+      metric_names,
+      function(name) as.numeric(resample[[name]] %||% NA_real_),
+      numeric(1)
+    )
+  }
+  alpha <- (1 - level) / 2
+  rows <- lapply(metric_names, function(name) {
+    column <- values[, name]
+    usable <- column[is.finite(column)]
+    if (length(usable) < 2L) {
+      return(data.frame(
+        metric = name,
+        mean = as.numeric(point[[name]] %||% NA_real_),
+        se = NA_real_,
+        lower = NA_real_,
+        upper = NA_real_,
+        n_effective = as.integer(length(usable)),
+        formatted = "NA",
+        stringsAsFactors = FALSE
+      ))
+    }
+    lower <- as.numeric(stats::quantile(usable, probs = alpha, names = FALSE))
+    upper <- as.numeric(stats::quantile(usable, probs = 1 - alpha, names = FALSE))
+    data.frame(
+      metric = name,
+      mean = mean(usable),
+      se = stats::sd(usable),
+      lower = lower,
+      upper = upper,
+      n_effective = as.integer(length(usable)),
+      formatted = sprintf("%.3f (%.3f-%.3f)", mean(usable), lower, upper),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+.calc_metrics_uniml_multiclass <- function(x, truth = NULL, metrics = "all", ...) {  if (!is.list(x) || is.null(x$prob)) {
     .abort("A `uniml_multiclass` prediction must contain a `prob` matrix.")
   }
   if (is.null(truth)) {
@@ -215,6 +292,24 @@
 #' @export
 calc_metrics.uniml_multiclass <- function(x, truth = NULL, metrics = "all", ...) {
   .calc_metrics_uniml_multiclass(x, truth = truth, metrics = metrics, ...)
+}
+
+#' @rdname calc_metrics
+#' @export
+calc_metrics.matrix <- function(x, truth = NULL, metrics = "all", ...) {
+  if (!is.numeric(x)) {
+    .abort("`x` must be a numeric probability matrix.")
+  }
+  if (ncol(x) < 3L) {
+    .abort(paste(
+      "A matrix with fewer than three class columns is a binary problem;",
+      "pass the positive-class probability vector to `calc_metrics()` instead."
+    ))
+  }
+  if (is.null(truth)) {
+    .abort("`truth` is required for a probability matrix.")
+  }
+  .calc_multiclass_metrics(x, truth, metrics = metrics)
 }
 
 #' Convert an mlr3 prediction into a `uniml_multiclass` object

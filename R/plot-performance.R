@@ -576,6 +576,10 @@ plot_roc.data.frame <- function(x, models = NULL, palette = "bmj", ...) {
 #'   model and `"all"` keeps every model.
 #' @param positive Positive class label, used when `x` is an mlr3 prediction.
 #' @param bins Number of quantile bins.
+#' @param annotate Whether to add the calibration slope, intercept, and
+#'   calibration-in-the-large to the caption. They are computed on the
+#'   predictions themselves, not on the binned points, so they do not depend on
+#'   `bins`.
 #' @param palette Discrete palette: a `ggsci` name, a colour, or a colour vector.
 #' @param theme A `ggplot2` theme applied to the figure.
 #' @param title,subtitle,caption Optional figure labels.
@@ -596,7 +600,8 @@ plot_roc.data.frame <- function(x, models = NULL, palette = "bmj", ...) {
 plot_calibration.uniml_result <- function(x, models = NULL, bins = 10L,
                                           palette = "bmj", theme = theme_uniml(),
                                           title = NULL, subtitle = NULL,
-                                          caption = NULL, set = NULL, ...) {
+                                          caption = NULL, set = NULL,
+                                          annotate = TRUE, ...) {
   .assert_scalar_number(bins, "bins", integer = TRUE, min = 2)
   accent <- .uniml_plot_palette(1L, palette = palette)
   predictions <- .normalise_predictions(.result_predictions(x))
@@ -672,7 +677,50 @@ plot_calibration.uniml_result <- function(x, models = NULL, bins = 10L,
   } else if (length(unique(curve$model)) > 1L) {
     plot <- plot + ggplot2::facet_wrap(~model)
   }
+  if (isTRUE(annotate) && is.null(caption)) {
+    annotation <- .calibration_annotation(predictions)
+    if (!is.null(annotation)) {
+      caption <- annotation
+    }
+  }
   .uniml_style_plot(plot, theme, title, subtitle, caption)
+}
+
+# The numbers a reader expects next to a calibration plot: slope and intercept
+# from `logit(y) ~ logit(p)`, and calibration-in-the-large. Reported per model and
+# per stage, and only when they could be estimated.
+.calibration_annotation <- function(predictions) {
+  rows <- lapply(unique(predictions$model), function(name) {
+    subset <- predictions[predictions$model == name, , drop = FALSE]
+    positive <- .first_prediction_value(subset$positive)
+    stages <- list()
+    for (stage in c("raw", "calibrated")) {
+      prob <- if (identical(stage, "raw")) {
+        subset$prob
+      } else {
+        subset$calibrated_prob
+      }
+      if (all(is.na(prob))) {
+        next
+      }
+      cleaned <- .clean_binary_inputs(prob, subset$truth, positive = positive)
+      fit <- .calibration_fit(cleaned$prob, cleaned$event)
+      if (!is.finite(fit$slope)) {
+        next
+      }
+      label <- if (identical(stage, "raw")) name else paste(name, "(calibrated)")
+      stages[[length(stages) + 1L]] <- sprintf(
+        "%s: slope %.2f, intercept %.2f, calibration-in-the-large %.2f",
+        label, fit$slope, fit$intercept, fit$large
+      )
+    }
+    stages
+  })
+  rows <- unlist(rows, use.names = FALSE)
+  if (length(rows) == 0L) {
+    return(NULL)
+  }
+  paste(rows, collapse = "\n")
 }
 
 #' @rdname plot_calibration

@@ -19,7 +19,7 @@
 # is why a task type only overrides them when its learners are not `TaskClassif`
 # learners.
 .workflow_adapter_optional_hooks <- function() {
-  c("train", "tune")
+  c("train", "tune", "features")
 }
 
 #' Register a workflow adapter for a task type

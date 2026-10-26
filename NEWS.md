@@ -1,3 +1,10 @@
+# uniml 0.3.3
+
+* `select_features()` treats an empty `methods` vector as "no selection" and keeps
+  every candidate instead of failing in `combine_selections()`. That is what a task
+  type with no selection method of its own needs, and it makes the behaviour the
+  same whether the specification is read by the workflow or by hand.
+
 # uniml 0.3.2
 
 The five reporting domains a clinical prediction model is judged on are now all

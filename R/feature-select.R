@@ -988,6 +988,20 @@ select_features <- function(data, spec) {
     spec$outcome
   )
   methods <- unique(.selection_methods(selection$methods))
+  if (length(methods) == 0L) {
+    # No method means no selection: keep every candidate, which is what a task
+    # type that has no selection method of its own expects.
+    selected <- colnames(design$matrix)
+    return(.new_selection_result(
+      method = "none",
+      selected_features = selected,
+      details = data.frame(
+        feature = selected,
+        selected = TRUE,
+        stringsAsFactors = FALSE
+      )
+    ))
+  }
   method_results <- vector("list", length(methods))
   names(method_results) <- methods
   extra_args <- if (is.null(selection$args)) list() else selection$args

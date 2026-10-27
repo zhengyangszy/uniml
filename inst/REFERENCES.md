@@ -94,6 +94,9 @@ directly. DOIs are given where the publisher assigns one.
 | Multi-class Brier score | Brier GW (1950), as above; implementation follows `mlr3measures::mbrier` | `calc_metrics()` |
 | Log loss | Good IJ (1952). Rational decisions. *Journal of the Royal Statistical Society B*, 14(1), 107-114. | `calc_metrics()` |
 | One-vs-rest ROC curves | Fawcett T (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, 27(8), 861-874. doi:10.1016/j.patrec.2005.10.010 | `plot_roc()` |
+| Top-label calibration (ECE, MCE) | Guo C, Pleiss G, Sun Y, Weinberger KQ (2017). On calibration of modern neural networks. *Proceedings of the 34th International Conference on Machine Learning*, 70, 1321-1330. | `multiclass_calibration()`, `calc_metrics()`, `plot_calibration()` |
+| Class-wise calibration | Kull M, Perello-Nieto M, Kängsepp M, Silva Filho T, Song H, Flach P (2019). Beyond temperature scaling: obtaining well-calibrated multi-class probabilities with Dirichlet calibration. *Advances in Neural Information Processing Systems*, 32. | `multiclass_calibration()`, `calc_metrics()$ece_classwise` |
+| Why ECE is not a scoring rule | Van Calster B, McLernon DJ, van Smeden M, Wynants L, Steyerberg EW (2019). Calibration: the Achilles heel of predictive analytics. *BMC Medicine*, 17, 230. doi:10.1186/s12916-019-1466-7 | `multiclass_calibration()`, `plot_calibration()` |
 
 ## Explainability
 

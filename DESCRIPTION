@@ -1,74 +1,36 @@
 Package: uniml
 Type: Package
 Title: Unified Predictive Modeling Toolkit
-Version: 0.3.5
-Authors@R:
-    person("Steve", "Shi", email = "19943405117@163.com", role = c("aut", "cre"))
+Version: 0.4.0
+Authors@R: person("Steve", "Shi", email = "19943405117@163.com", role =
+        c("aut", "cre"))
 Author: Steve Shi [aut, cre]
 Maintainer: Steve Shi <19943405117@163.com>
 Description: A unified toolkit for binary and multiclass classification
-    modelling that chains preprocessing, feature selection, model training and
-    tuning, evaluation, visualization, and SHAP interpretability behind one set
-    of objects, while keeping a strict separation between the data that fits a
-    model and the data that judges it. Models, tasks, resampling, and tuning are
-    'mlr3' objects, multiple imputation is pooled with Rubin's rules, and
-    results are exported in a layout that can be reopened outside R.
+        modelling that chains preprocessing, feature selection, model
+        training and tuning, evaluation, visualization, and SHAP
+        interpretability behind one set of objects, while keeping a
+        strict separation between the data that fits a model and the
+        data that judges it. Models, tasks, resampling, and tuning are
+        'mlr3' objects, multiple imputation is pooled with Rubin's
+        rules, and results are exported in a layout that can be
+        reopened outside R.
 License: MIT + file LICENSE
 URL: https://github.com/zhengyangszy/uniml
 BugReports: https://github.com/zhengyangszy/uniml/issues
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-Depends:
-    R (>= 4.1)
-Imports:
-    mlr3,
-    mlr3learners,
-    mlr3pipelines,
-    mlr3filters,
-    mlr3fselect,
-    mlr3tuning,
-    mlr3measures,
-    paradox,
-    mlr3misc,
-    future,
-    future.apply,
-    data.table,
-    ggplot2,
-    pROC,
-    glmnet,
-    Boruta,
-    ranger,
-    mice,
-    shapviz,
-    kernelshap
-Suggests:
-    mlr3mbo (>= 1.0.0),
-    DiceKriging,
-    rgenoud,
-    missRanger,
-    missForest,
-    xgboost,
-    e1071,
-    kknn,
-    nnet,
-    rpart,
-    PRROC,
-    ResourceSelection,
-    dcurves,
-    smotefamily,
-    ROSE,
-    correlation,
-    car,
-    ggsci,
-    patchwork,
-    igraph,
-    ggraph,
-    ggpubr,
-    haven,
-    testthat (>= 3.0.0),
-    knitr,
-    rmarkdown
+Depends: R (>= 4.1)
+Imports: mlr3, mlr3learners, mlr3pipelines, mlr3filters, mlr3fselect,
+        mlr3tuning, mlr3measures, paradox, mlr3misc, future,
+        future.apply, data.table, ggplot2, pROC, glmnet, Boruta,
+        ranger, mice, shapviz, kernelshap
+Suggests: mlr3mbo (>= 1.0.0), DiceKriging, rgenoud, missRanger,
+        missForest, xgboost, e1071, kknn, nnet, rpart, PRROC,
+        ResourceSelection, dcurves, smotefamily, ROSE, correlation,
+        car, ggsci, patchwork, igraph, ggraph, ggpubr, haven, testthat
+        (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 VignetteBuilder: knitr

@@ -209,16 +209,86 @@ plot_confusion.uniml_multiclass <- function(x, palette = "bmj",
 }
 
 #' @rdname plot_calibration
+#' @param scope Which calibration to draw: `"top_label"` (confidence against
+#'   accuracy), `"class"` (one one-vs-rest curve per class), or `"both"`. See
+#'   [multiclass_calibration()] for how the two are defined.
 #' @export
-plot_calibration.uniml_multiclass <- function(x, ...) {
-  .abort(
-    paste(
-      "`plot_calibration()` has no multiclass method yet: a multiclass",
-      "calibration curve needs a stated convention (per-class reliability,",
-      "top-label, or a multinomial score). Use `calc_metrics()` for the",
-      "multiclass Brier score and log loss in the meantime."
-    )
+plot_calibration.uniml_multiclass <- function(x, scope = c("top_label", "class",
+                                                           "both"),
+                                              bins = 10L, palette = "bmj",
+                                              theme = theme_uniml(), title = NULL,
+                                              subtitle = NULL, caption = NULL,
+                                              annotate = TRUE, ...) {
+  scope <- match.arg(scope)
+  .assert_scalar_number(bins, "bins", integer = TRUE, min = 2)
+  calibration <- multiclass_calibration(x$prob, x$truth, bins = bins)
+  curve <- calibration$reliability
+  if (nrow(curve) == 0L) {
+    .abort("No calibration group could be formed; the predictions do not vary.")
+  }
+  if (!identical(scope, "both")) {
+    curve <- curve[curve$scope == scope, , drop = FALSE]
+  }
+  curve$series <- ifelse(
+    curve$scope == "top_label", "Top label", curve$class
   )
+  curve$panel <- ifelse(
+    curve$scope == "top_label",
+    "Top label",
+    "One-vs-rest (class-wise)"
+  )
+  levels_used <- unique(curve$series)
+  colours <- .uniml_plot_palette(length(levels_used), palette = palette)
+  if (identical(levels_used, "Top label")) {
+    colours <- .uniml_plot_palette(1L, palette = palette)
+  } else if ("Top label" %in% levels_used) {
+    # The top-label curve is the reference, so it gets the first colour and the
+    # classes share the rest of the palette.
+    colours <- .uniml_plot_palette(length(levels_used), palette = palette)
+  }
+  curve$series <- factor(curve$series, levels = levels_used)
+  plot <- ggplot2::ggplot(
+    curve,
+    ggplot2::aes(x = .data$predicted, y = .data$observed, colour = .data$series)
+  ) +
+    ggplot2::geom_abline(
+      intercept = 0, slope = 1, linetype = "dashed", colour = "grey60"
+    ) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::coord_equal(xlim = c(0, 1), ylim = c(0, 1)) +
+    ggplot2::scale_colour_manual(values = colours, name = NULL) +
+    ggplot2::labs(
+      x = "Predicted probability",
+      y = if (identical(scope, "top_label")) {
+        "Observed proportion of the predicted class"
+      } else {
+        "Observed proportion"
+      }
+    ) +
+    theme_uniml()
+  if (identical(scope, "both")) {
+    plot <- plot + ggplot2::facet_wrap(~panel)
+  }
+  if (isTRUE(annotate) && is.null(caption)) {
+    summary <- calibration$summary
+    number <- function(value) {
+      if (is.na(value)) "NA" else formatC(value, format = "f", digits = 3)
+    }
+    caption <- sprintf(
+      paste(
+        "Top label: ECE %s, MCE %s (level bias %s).",
+        "Class-wise ECE %s over %d classes, %d bins."
+      ),
+      number(summary$ece),
+      number(summary$mce),
+      number(summary$level_bias),
+      number(summary$ece_classwise),
+      summary$n_classes,
+      summary$bins
+    )
+  }
+  .uniml_style_plot(plot, theme, title, subtitle, caption)
 }
 
 #' @rdname plot_dca

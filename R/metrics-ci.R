@@ -106,7 +106,7 @@ pool_mi <- function(estimates, variances, level = 0.95) {
     "auc", "pr_auc", "brier", "accuracy", "sensitivity", "specificity",
     "ppv", "npv", "f1", "f2", "youden", "plr", "nlr", "dor",
     "balanced_accuracy", "kappa", "calib_slope", "calib_intercept",
-    "calib_large"
+    "calib_large", "ece", "mce"
   )
 }
 
@@ -131,6 +131,9 @@ pool_mi <- function(estimates, variances, level = 0.95) {
     plr = c(0, Inf),
     nlr = c(0, Inf),
     dor = c(0, Inf),
+    # A calibration error is a distance from 0, so it lives in [0, 1].
+    ece = c(0, 1),
+    mce = c(0, 1),
     NULL
   )
 }

@@ -31,7 +31,11 @@
   c(
     "auc", "auc_ovr", "micro_auc", "accuracy", "balanced_accuracy", "kappa",
     "logloss", "brier", "sensitivity", "specificity", "micro_specificity",
-    "ppv", "npv", "f1"
+    "ppv", "npv", "f1",
+    # Calibration, measured under the two conventions documented in
+    # `calibration-multiclass.R`: top-label (`ece`, `mce`) and class-wise
+    # (`ece_classwise`).
+    "ece", "mce", "ece_classwise"
   )
 }
 
@@ -215,6 +219,9 @@
   }
 
   factor_truth <- factor(observed, levels = classes)
+  calibration <- multiclass_calibration(prob, observed, bins = 10L)
+  per_class$ece <- calibration$per_class$ece
+  per_class$mce <- calibration$per_class$mce
   values <- list(
     auc = .safe_metric(
       mlr3measures::mauc_au1u,
@@ -245,6 +252,9 @@
     auc_ovr = .macro_mean(per_class$auc),
     micro_auc = micro$auc,
     micro_specificity = micro$specificity,
+    ece = calibration$summary$ece,
+    mce = calibration$summary$mce,
+    ece_classwise = calibration$summary$ece_classwise,
     confusion = confusion,
     per_class = per_class,
     n_samples = as.integer(n),

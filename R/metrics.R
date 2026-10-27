@@ -10,7 +10,12 @@
     "auc", "pr_auc", "brier", "accuracy", "sensitivity", "specificity",
     "ppv", "npv", "f1", "f2", "youden", "plr", "nlr", "dor",
     "balanced_accuracy", "kappa", "calib_slope", "calib_intercept",
-    "calib_large"
+    "calib_large",
+    # Binned calibration, reported so that the binary and multiclass paths expose
+    # the same numbers. The slope and intercept above are the better diagnostic;
+    # ECE and MCE are the bin-dependent summaries that multiclass calibration has
+    # to fall back on, and they are defined by the same `.binned_calibration()`.
+    "ece", "mce"
   )
 }
 
@@ -204,6 +209,17 @@
   } else {
     list(intercept = NA_real_, slope = NA_real_, large = NA_real_)
   }
+  # The same binning rule as the multiclass ECE. The two numbers are not the
+  # same quantity, though: here the probability of the event is binned, because a
+  # binary outcome has one, while a multiclass model only has a confidence in the
+  # class it predicted. `ece_classwise` is what makes the two comparable — for
+  # the positive column it is this very number.
+  wants_binned <- identical(metrics, "all") || any(c("ece", "mce") %in% metrics)
+  binned <- if (wants_binned && n > 0L) {
+    .binned_calibration(prob, event, bins = 10L)
+  } else {
+    list(ece = NA_real_, mce = NA_real_)
+  }
   sensitivity <- .ratio_or_na(tp, tp + fn)
   specificity <- .ratio_or_na(tn, tn + fp)
   ppv <- .ratio_or_na(tp, tp + fp)
@@ -287,6 +303,8 @@
     calib_slope = calibration$slope,
     calib_intercept = calibration$intercept,
     calib_large = calibration$large,
+    ece = binned$ece,
+    mce = binned$mce,
     tp = as.integer(tp),
     tn = as.integer(tn),
     fp = as.integer(fp),
@@ -365,6 +383,18 @@
 #' calibration_metrics(probs, labels, level = NULL)
 calibration_metrics <- function(probs, labels, positive = NULL, level = 0.95,
                                 R = 500L, seed = 2026L) {
+  if (is.matrix(probs)) {
+    # A multinomial model has no single slope or intercept, so this function does
+    # not pretend to give one. The multiclass numbers live with the other
+    # multiclass metrics, where they also get bootstrap intervals.
+    .abort(paste(
+      "`calibration_metrics()` reports a binary recalibration slope and",
+      "intercept, which a multiclass probability matrix does not have. Use",
+      "`calc_metrics()` for the top-label ECE/MCE and the class-wise ECE, or",
+      "`multiclass_calibration()` for the per-class numbers and the reliability",
+      "tables; `calc_ci()` gives the intervals."
+    ))
+  }
   cleaned <- .clean_binary_inputs(probs, labels, positive = positive)
   event <- cleaned$event
   prob <- cleaned$prob

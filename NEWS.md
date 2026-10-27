@@ -1,3 +1,51 @@
+# uniml 0.4.0
+
+Multiclass calibration, which the package previously declined to compute because
+"calibration" means more than one thing once a model outputs a probability for
+every class. Both meanings are implemented and named.
+
+## Multiclass calibration
+
+* New `multiclass_calibration()` reports calibration under two conventions:
+  **top-label** (the largest probability of each row against whether the
+  predicted class was right, Guo et al. 2017) and **class-wise** (a one-vs-rest
+  comparison for every class, averaged without weighting, Kull et al. 2019). It
+  returns the summary, a per-class table, and the long reliability table the
+  figure is drawn from.
+* `calc_metrics()` on a probability matrix gains `ece` (expected calibration
+  error, top-label), `mce` (maximum calibration error), and `ece_classwise`, plus
+  per-class `ece`/`mce` in `per_class`. `calc_ci()` bootstraps all three.
+* New `plot_calibration()` method for `uniml_multiclass`: `scope = "top_label"`,
+  `"class"`, or `"both"`. The caption carries ECE, MCE, the level bias and the
+  class-wise ECE, and `annotate = FALSE` removes it.
+* The two conventions are reported together on purpose: top-label ECE ignores
+  every non-maximal probability, so a model can look calibrated while one class
+  is badly wrong, and class-wise ECE is what catches that.
+* There is no multiclass slope or intercept. A multinomial model has no unique
+  univariate recalibration, and its analogue (temperature scaling) is a
+  recalibration method, not a diagnostic. What is reported instead is the level
+  bias, `mean confidence - accuracy`.
+* `calibration_metrics()` now refuses a probability matrix with a message that
+  names the two functions to use instead, rather than failing inside the binary
+  input checks.
+
+## Binary calibration error
+
+* `calc_metrics()` gains `ece` and `mce` for binary outcomes too, so the two
+  paths expose the same numbers. The binary ECE bins the probability of the
+  event, which is not the same estimand as the multiclass top-label ECE; the
+  positive class of `multiclass_calibration()$per_class` is the bridge, and a test
+  pins the equality.
+* Both paths now share one binning rule, `.binned_calibration()`, so the
+  calibration table used by the workflow and `calc_metrics()` cannot drift apart.
+
+## Export
+
+* `export_results()` writes `calibration/summary.csv` whenever the task type
+  reports a per-time-point calibration summary. `unimlsurv` uses it for the ICI
+  and the recalibration coefficients; without this the numbers existed only
+  inside R.
+
 # uniml 0.3.5
 
 The last two gaps from the reporting audit: a precision-recall figure, and the

@@ -582,9 +582,13 @@ assemble_result <- function(data_info = NULL, preprocess = NULL, selection = NUL
       method = if (is.null(calibration$method)) NA_character_ else calibration$method,
       stringsAsFactors = FALSE
     )
+    # A task type that has a per-time-point summary (survival reports the ICI and
+    # the recalibration coefficients there) ships it next to the curve table so
+    # neither is trapped inside R.
     return(list(
       "params.csv" = params,
       "ece_brier.csv" = calibration$metrics,
+      "schema.csv" = calibration$summary,
       "hl.csv" = NULL
     ))
   }

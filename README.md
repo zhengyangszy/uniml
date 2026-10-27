@@ -20,7 +20,7 @@ own, and `run_workflow()` wires them together.
 | L2 preprocessing | `fit_preprocessor()`, `impute_data()`, `scale_numeric()`, `encode_categorical()`, `balance_classes()` | Imputation, scaling, encoding, balancing |
 | L3 selection | `select_features()`, `select_lasso()`, `select_boruta()`, `select_rf_importance()`, `select_rfe()`, `select_univariate()`, `select_multivariate()`, `combine_selections()`, `remove_collinear()` | Feature selection and collinearity handling |
 | L4 modeling | `make_task()`, `resolve_learners()`, `train_model()`, `tune_model()` | mlr3 learners, tuning, cross validation |
-| L5 statistics | `calc_metrics()`, `calc_ci()`, `calibration_metrics()`, `calibrate_probabilities()`, `delong_test()`, `hl_test()`, `calc_nri_idi()`, `dca()`, `find_threshold()` | Metrics with confidence intervals, calibration numbers, tests, decision curves |
+| L5 statistics | `calc_metrics()`, `calc_ci()`, `calibration_metrics()`, `multiclass_calibration()`, `calibrate_probabilities()`, `delong_test()`, `hl_test()`, `calc_nri_idi()`, `dca()`, `find_threshold()` | Metrics with confidence intervals, calibration numbers, tests, decision curves |
 | L6 results | `assemble_result()`, `rank_models()`, `export_results()`, `save_result()`, `read_result()` | Ranking, on-disk export, and a result you can hand over |
 | L7 plots | `plot_roc()`, `plot_pr_curve()`, `plot_calibration()`, `plot_dca()`, `plot_confusion()`, `theme_uniml()` | Performance figures |
 | L8 SHAP | `explain_shap()`, `plot_shap_importance()`, `plot_shap_beeswarm()`, `plot_shap_dependence()`, `plot_shap_waterfall()`, `extract_thresholds()` | Interpretability |
@@ -62,10 +62,14 @@ is not it yet.
   prediction table, thresholds, calibrators, and post-model tests assume a single
   probability column, so a multiclass specification stops with a message pointing
   at `vignette("uniml-multiclass")`. Multiclass is supported at the layer level —
-  specification, data, task, learners, tuning, metrics, and plots.
-- **Some binary methods have no multiclass counterpart.** Calibration, decision
-  curves, NRI/IDI, DeLong, and Hosmer-Lemeshow need one positive class. They are
-  refused for multiclass rather than silently given a convention.
+  specification, data, task, learners, tuning, metrics, calibration, and plots.
+- **Some binary methods have no multiclass counterpart.** Decision curves,
+  NRI/IDI, DeLong, and Hosmer-Lemeshow need one positive class. They are refused
+  for multiclass rather than silently given a convention. Calibration *is*
+  available, under two stated conventions: top-label ECE/MCE and class-wise ECE
+  (`multiclass_calibration()`). Multiclass *recalibration* is not: Platt scaling
+  and isotonic regression are one-vs-rest by nature, and averaging them does not
+  calibrate a multinomial distribution.
 - **Survival is out of scope.** It is a separate package with its own data model
   (time and status, censoring) and is not implemented here.
 - **The example cohorts are synthetic.** Both files in `inst/extdata` come from

@@ -17,7 +17,7 @@
 | L2 预处理 | `impute_data()`、`scale_numeric()`、`encode_categorical()`、`balance_classes()` | 缺失值填补、标准化、哑变量、类别平衡 |
 | L3 特征筛选 | `select_univariate()`、`select_lasso()`、`select_boruta()`、`select_rfe()`、`remove_collinear()` | 单因素/多因素/机器学习筛选与共线性处理 |
 | L4 建模 | `make_task()`、`resolve_learners()`、`train_model()`、`tune_model()` | 基于 mlr3 的学习器、调参、交叉验证 |
-| L5 统计 | `calc_metrics()`、`calc_ci()`、`calibration_metrics()`、`calibrate_probabilities()`、`delong_test()`、`hl_test()`、`calc_nri_idi()`、`dca()`、`find_threshold()` | 指标与置信区间、校准截距/斜率、统计检验、决策曲线 |
+| L5 统计 | `calc_metrics()`、`calc_ci()`、`calibration_metrics()`、`multiclass_calibration()`、`calibrate_probabilities()`、`delong_test()`、`hl_test()`、`calc_nri_idi()`、`dca()`、`find_threshold()` | 指标与置信区间、校准（含多分类）、统计检验、决策曲线 |
 | L6 结果 | `assemble_result()`、`rank_models()`、`export_results()`、`save_result()`、`read_result()`、`tripod_ai_check()` | 模型排序、结果导出、模型交接、TRIPOD+AI 自检 |
 | L7 绘图 | `plot_roc()`、`plot_pr_curve()`、`plot_calibration()`、`plot_dca()`、`plot_confusion()`、`theme_uniml()` | 论文级图形 |
 | L8 可解释性 | `explain_shap()`、`plot_shap_*()`、`extract_thresholds()` | SHAP 重要性、蜂群、依赖、瀑布图 |
@@ -51,9 +51,12 @@ Hosmer–Lemeshow 检验、NRI/IDI、决策曲线、多重插补的 Rubin 池化
 - **两种任务类型：二分类与多分类。** `run_workflow()` **只支持二分类**：它的预测表、
   阈值、校准器、事后检验都建立在「单个概率列」上，所以多分类规格会直接报错并指向
   `vignette("uniml-multiclass")`。多分类在**逐层使用**的意义上完整可用——规格、数据、
-  任务、学习器、调参、指标、绘图都支持。
-- **部分二分类方法没有多分类对应物。** 校准、决策曲线、NRI/IDI、DeLong、
+  任务、学习器、调参、指标、校准、绘图都支持。
+- **部分二分类方法没有多分类对应物。** 决策曲线、NRI/IDI、DeLong、
   Hosmer–Lemeshow 都需要一个阳性类；多分类下明确拒绝，而不是替你选一个约定。
+  校准**有**多分类版本，但把约定写在明处：top-label 的 ECE/MCE 与 class-wise ECE
+  （`multiclass_calibration()`）。多分类的**重新校准**没有：Platt 与 isotonic 本质是
+  一对其余，把 K 个拼起来并不会得到一个校准好的多项分布。
 - **生存分析不在本包范围内。** 它是独立包（数据模型不同：时间 + 状态 + 删失）。
 - **示例数据是模拟的。** `inst/extdata` 两个文件都由
   `data-raw/simulate-cvd-mortality.R` 生成，6.5% 的事件率是模拟参数。它们的作用是让

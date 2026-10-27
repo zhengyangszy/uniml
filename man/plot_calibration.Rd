@@ -10,7 +10,18 @@
 \alias{plot_calibration}
 \title{Plot probability-calibration curves}
 \usage{
-\method{plot_calibration}{uniml_multiclass}(x, ...)
+\method{plot_calibration}{uniml_multiclass}(
+  x,
+  scope = c("top_label", "class", "both"),
+  bins = 10L,
+  palette = "bmj",
+  theme = theme_uniml(),
+  title = NULL,
+  subtitle = NULL,
+  caption = NULL,
+  annotate = TRUE,
+  ...
+)
 
 \method{plot_calibration}{uniml_result}(
   x,
@@ -37,10 +48,9 @@ plot_calibration(x, ...)
 \arguments{
 \item{x}{A \code{uniml_result} or prediction collection.}
 
-\item{...}{Reserved for method-specific arguments.}
-
-\item{models}{Optional subset of model names. \code{"best"} keeps the top-ranked
-model and \code{"all"} keeps every model.}
+\item{scope}{Which calibration to draw: \code{"top_label"} (confidence against
+accuracy), \code{"class"} (one one-vs-rest curve per class), or \code{"both"}. See
+\code{\link[=multiclass_calibration]{multiclass_calibration()}} for how the two are defined.}
 
 \item{bins}{Number of quantile bins.}
 
@@ -50,12 +60,17 @@ model and \code{"all"} keeps every model.}
 
 \item{title, subtitle, caption}{Optional figure labels.}
 
-\item{set}{Data set to plot; defaults to the comparison set used for ranking.}
-
 \item{annotate}{Whether to add the calibration slope, intercept, and
 calibration-in-the-large to the caption. They are computed on the
 predictions themselves, not on the binned points, so they do not depend on
 \code{bins}.}
+
+\item{...}{Reserved for method-specific arguments.}
+
+\item{models}{Optional subset of model names. \code{"best"} keeps the top-ranked
+model and \code{"all"} keeps every model.}
+
+\item{set}{Data set to plot; defaults to the comparison set used for ranking.}
 
 \item{positive}{Positive class label, used when \code{x} is an mlr3 prediction.}
 }

@@ -25,30 +25,17 @@
   event <- cleaned$event
   prob <- cleaned$prob
   brier <- mean((event - prob)^2)
-  bin <- pmin(pmax(floor(prob * bins) + 1L, 1L), bins)
-  group_n <- tabulate(bin, nbins = bins)
-  keep <- group_n > 0L
-  group_n <- group_n[keep]
-  pred_mean <- vapply(
-    which(keep),
-    function(i) mean(prob[bin == i]),
-    numeric(1)
-  )
-  obs_mean <- vapply(
-    which(keep),
-    function(i) mean(event[bin == i]),
-    numeric(1)
-  )
-  errors <- abs(pred_mean - obs_mean)
-  ece <- sum(errors * group_n) / sum(group_n)
-  mce <- max(errors)
+  binned <- .binned_calibration(prob, event, bins = bins)
+  ece <- binned$ece
+  mce <- binned$mce
 
   calib_slope <- NA_real_
   calib_intercept <- NA_real_
   calib_r2 <- NA_real_
-  if (length(group_n) >= 2L) {
+  groups <- binned$table
+  if (nrow(groups) >= 2L) {
     fit <- tryCatch(
-      stats::lm(obs_mean ~ pred_mean, weights = group_n),
+      stats::lm(observed ~ predicted, data = groups, weights = groups$n),
       error = function(e) NULL
     )
     if (!is.null(fit)) {

@@ -200,15 +200,59 @@ plot_roc(binary_prediction)
 plot_confusion(binary_prediction)
 ```
 
+## Calibration
+
+A multiclass model outputs a whole vector of probabilities for every patient, so
+"is the number right" has to be asked in two ways. Both are reported, because a
+model can pass one and fail the other.
+
+```{r calibration}
+calibration <- multiclass_calibration(prediction$prob, prediction$truth)
+calibration$summary
+calibration$per_class
+```
+
+* **Top-label** calibration keeps the largest probability of each row as the
+  confidence and asks whether patients with 0.8 confidence really belong to the
+  predicted class 80% of the time. Its numbers are `ece` (expected calibration
+  error) and `mce` (the worst bin).
+* **Class-wise** calibration repeats a one-vs-rest comparison for every class and
+  averages the per-class ECEs without weighting, so a rare class that is badly
+  wrong cannot hide behind the common ones. That is `ece_classwise`.
+* `level_bias` is `mean confidence - accuracy`. It is the closest thing to the
+  binary intercept: the multinomial model has no single slope to report, and its
+  analogue (temperature scaling) is a recalibration method rather than a
+  diagnostic.
+
+ECE and MCE are bin-dependent summaries, not proper scoring rules; rank models on
+the Brier score or the log loss, and read ECE as "how wrong is the stated
+probability when the model is wrong".
+
+```{r calibration-plot, fig.cap = "Reliability of the multiclass predictions: top-label confidence (left) and one-vs-rest per class (right)."}
+plot_calibration(binary_prediction, scope = "both")
+```
+
+The same numbers ride along with every other metric, so they can be tabulated and
+bootstrapped without a second call:
+
+```{r calibration-metrics}
+metrics <- calc_metrics(prediction)
+round(metrics$ece, 3)
+round(metrics$ece_classwise, 3)
+metrics$per_class[, c("class", "ece", "mce")]
+```
+
 ## What is deliberately missing
 
 These are not gaps to be filled in later without a decision; each needs a
 convention that a package should not choose silently.
 
-* **Calibration.** A multiclass reliability curve can mean per-class one-vs-rest
-  reliability, a top-label curve, or a multinomial score. `plot_calibration()`
-  and `calibrate_probabilities()` refuse rather than pick one; the Brier score
-  and the log loss are the calibrated-probability summaries available today.
+* **Multiclass recalibration.** Platt scaling and isotonic regression are
+  one-vs-rest by nature, and averaging `K` of them does not produce a calibrated
+  multinomial distribution. The principled method is temperature scaling or
+  Dirichlet calibration, both of which are recalibration methods the package does
+  not implement yet; `calibrate_probabilities()` therefore refuses a multiclass
+  probability matrix rather than shipping half of one.
 * **Decision-curve analysis.** Net benefit compares one event against no event.
   Run one class against the rest with `as_uniml_binary()` and `dca()` if that is
   the question you are asking.
@@ -218,8 +262,9 @@ convention that a package should not choose silently.
   table, thresholds, calibrators, and post-model tests all assume one probability
   column. Calling it on a multiclass specification stops with a message pointing
   back at this vignette. The layers underneath it are not binary-only any more —
-  the task, the metrics, and the composite ranking are all declared by the task
-  type — which is why the pieces above can be combined by hand.
+  the task, the metrics, the calibration, and the composite ranking are all
+  declared by the task type — which is why the pieces above can be combined by
+  hand.
 
 ## References
 
@@ -236,5 +281,13 @@ Psychological Measurement*, 20(1), 37-46. doi:10.1177/001316446002000104
 
 Brier GW (1950). Verification of forecasts expressed in terms of probability.
 *Monthly Weather Review*, 78(1), 1-3.
+
+Guo C, Pleiss G, Sun Y, Weinberger KQ (2017). On calibration of modern neural
+networks. *Proceedings of the 34th International Conference on Machine Learning*,
+70, 1321-1330.
+
+Kull M, Perello-Nieto M, Kängsepp M, Silva Filho T, Song H, Flach P (2019). Beyond
+temperature scaling: obtaining well-calibrated multi-class probabilities with
+Dirichlet calibration. *Advances in Neural Information Processing Systems*, 32.
 
 See `system.file("REFERENCES.md", package = "uniml")` for the full list.

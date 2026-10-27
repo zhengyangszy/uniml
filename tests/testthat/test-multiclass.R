@@ -274,7 +274,10 @@ test_that("multiclass plots work and unsupported figures say so", {
 
   expect_s3_class(plot_roc(prediction), "ggplot")
   expect_s3_class(plot_confusion(prediction), "ggplot")
-  expect_error(plot_calibration(prediction), "no multiclass method yet")
+  # Calibration is defined under the two conventions `multiclass_calibration()`
+  # states, and both are drawn here.
+  expect_s3_class(plot_calibration(prediction), "ggplot")
+  expect_s3_class(plot_calibration(prediction, scope = "class"), "ggplot")
   expect_error(plot_dca(prediction), "not defined for multiclass")
 })
 

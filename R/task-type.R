@@ -392,6 +392,19 @@ plot_roc.default <- function(x, ...) {
 
 # Documented in R/plot-performance.R.
 #' @export
+#' @rdname plot_pr_curve
+plot_pr_curve <- function(x, ...) {
+  UseMethod("plot_pr_curve")
+}
+
+# Documented in R/plot-performance.R.
+#' @exportS3Method plot_pr_curve default
+plot_pr_curve.default <- function(x, ...) {
+  .no_method("plot_pr_curve", x)
+}
+
+# Documented in R/plot-performance.R.
+#' @export
 #' @rdname plot_calibration
 plot_calibration <- function(x, ...) {
   UseMethod("plot_calibration")

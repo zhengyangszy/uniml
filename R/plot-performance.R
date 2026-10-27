@@ -420,6 +420,9 @@
 #' @param title,subtitle,caption Optional figure labels.
 #' @param set Data set to plot (`"validation"`, `"test"`, `"external"`, ...);
 #'   defaults to the comparison set used for ranking.
+#' @param micro For a multiclass prediction, whether to add the micro-average
+#'   curve beside the one-vs-rest curves. The subtitle reports all three AUCs
+#'   (Hand-Till, macro one-vs-rest, micro).
 #' @param ... Reserved for method-specific arguments.
 #'
 #' @return A `ggplot` object.
@@ -506,6 +509,195 @@ plot_roc.PredictionClassif <- function(x, positive = NULL, ...) {
 #' @export
 plot_roc.data.frame <- function(x, models = NULL, palette = "bmj", ...) {
   plot_roc.uniml_result(x, models = models, palette = palette, ...)
+}
+
+# Precision-recall -----------------------------------------------------------
+
+# The precision-recall curve. `PRROC::pr.curve()` is the same code
+# `mlr3measures::prauc()` calls, so the curve drawn here and the PR AUC reported
+# by `calc_metrics()` come from one implementation. If PRROC is not installed the
+# curve is computed by hand and the area is its trapezoid.
+.pr_curve_rows <- function(model, prob, truth, positive) {
+  cleaned <- .clean_binary_inputs(prob, truth, positive = positive)
+  if (cleaned$n < 2L || length(unique(cleaned$event)) < 2L) {
+    return(NULL)
+  }
+  event <- cleaned$event
+  probability <- cleaned$prob
+  n_pos <- sum(event == 1L)
+  if (n_pos == 0L || n_pos == cleaned$n) {
+    return(NULL)
+  }
+  fit <- if (requireNamespace("PRROC", quietly = TRUE)) {
+    tryCatch(
+      PRROC::pr.curve(
+        scores.class0 = probability,
+        weights.class0 = event,
+        curve = TRUE
+      ),
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+  if (!is.null(fit)) {
+    # Columns are recall (descending), precision, threshold.
+    rows <- data.frame(
+      model = model,
+      recall = as.numeric(fit$curve[, 1L]),
+      precision = as.numeric(fit$curve[, 2L]),
+      threshold = as.numeric(fit$curve[, 3L]),
+      pr_auc = as.numeric(fit$auc.integral),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    cuts <- sort(unique(probability), decreasing = TRUE)
+    flagged <- vapply(cuts, function(cut) {
+      tp <- sum(probability >= cut & event == 1L)
+      fp <- sum(probability >= cut & event == 0L)
+      c(recall = tp / n_pos,
+        precision = if (tp + fp == 0L) NA_real_ else tp / (tp + fp))
+    }, numeric(2))
+    rows <- data.frame(
+      model = model,
+      recall = as.numeric(flagged["recall", ]),
+      precision = as.numeric(flagged["precision", ]),
+      threshold = cuts,
+      stringsAsFactors = FALSE
+    )
+    rows <- rows[is.finite(rows$precision), , drop = FALSE]
+    rows <- rows[order(rows$recall, rows$precision), , drop = FALSE]
+    area <- if (nrow(rows) < 2L) {
+      NA_real_
+    } else {
+      sum(diff(rows$recall) *
+            (utils::head(rows$precision, -1L) + utils::tail(rows$precision, -1L)) / 2)
+    }
+    rows$pr_auc <- area
+  }
+  if (nrow(rows) == 0L) {
+    return(NULL)
+  }
+  rows <- rows[order(rows$recall, rows$precision), , drop = FALSE]
+  rows$prevalence <- n_pos / cleaned$n
+  rownames(rows) <- NULL
+  rows
+}
+
+#' Plot precision-recall curves
+#'
+#' The companion figure to [plot_roc()] for an imbalanced outcome. A rare event
+#' makes the ROC curve look reassuring, because the false-positive rate divides by
+#' a large number of negatives; the precision-recall curve divides by the predicted
+#' positives instead, so it stays honest when the event rate is low.
+#'
+#' The dotted line is the prevalence: a model with no information sits on it, and a
+#' useful model sits above it.
+#'
+#' @param x A `uniml_result` or prediction collection.
+#' @param models Optional subset of model names. `"best"` keeps the top-ranked
+#'   model and `"all"` keeps every model.
+#' @param positive Positive class label, used when `x` is an mlr3 prediction.
+#' @param palette Discrete palette: a `ggsci` name, a colour, or a colour vector.
+#' @param theme A `ggplot2` theme applied to the figure.
+#' @param title,subtitle,caption Optional figure labels.
+#' @param set Data set to plot; defaults to the comparison set used for ranking.
+#' @param ... Reserved for method-specific arguments.
+#'
+#' @return A `ggplot` object.
+#' @rdname plot_pr_curve
+#' @references
+#' Saito T, Rehmsmeier M (2015). The precision-recall plot is more informative than
+#' the ROC plot when evaluating binary classifiers on imbalanced datasets. *PLoS
+#' ONE*, 10(3), e0118432. doi:10.1371/journal.pone.0118432
+#'
+#' Davis J, Goadrich M (2006). The relationship between precision-recall and ROC
+#' curves. *Proceedings of the 23rd International Conference on Machine Learning*,
+#' 233-240. doi:10.1145/1143844.1143874
+#' @export
+#' @examples
+#' predictions <- data.frame(
+#'   model = "lr",
+#'   prob = c(0.1, 0.4, 0.6, 0.9),
+#'   truth = factor(c("no", "no", "yes", "yes"), levels = c("no", "yes")),
+#'   positive = "yes"
+#' )
+#' plot_pr_curve(predictions)
+plot_pr_curve.uniml_result <- function(x, models = NULL, palette = "bmj",
+                                       theme = theme_uniml(), title = NULL,
+                                       subtitle = NULL, caption = NULL,
+                                       set = NULL, ...) {
+  predictions <- .normalise_predictions(.result_predictions(x))
+  predictions <- .filter_prediction_sets(
+    predictions,
+    if (is.null(set)) .default_plot_set(x) else set
+  )
+  predictions <- .filter_prediction_models(
+    predictions,
+    .resolve_plot_models(x, models)
+  )
+  model_names <- unique(predictions$model)
+  curves <- lapply(model_names, function(name) {
+    rows <- predictions[predictions$model == name, , drop = FALSE]
+    .pr_curve_rows(
+      model = name,
+      prob = .prediction_values(rows, calibrated = FALSE, fallback = TRUE),
+      truth = rows$truth,
+      positive = .first_prediction_value(rows$positive)
+    )
+  })
+  curves <- curves[!vapply(curves, is.null, logical(1))]
+  if (length(curves) == 0L) {
+    .abort("No model had two outcome classes available for a PR curve.")
+  }
+  curve <- do.call(rbind, curves)
+  labels <- unique(curve[, c("model", "pr_auc"), drop = FALSE])
+  labels$label <- sprintf("%s (PR AUC = %.3f)", labels$model, labels$pr_auc)
+  curve$label <- labels$label[match(curve$model, labels$model)]
+  model_levels <- unique(curve$label)
+  curve$label <- factor(curve$label, levels = model_levels)
+  values <- stats::setNames(
+    .uniml_plot_palette(length(model_levels), palette = palette),
+    model_levels
+  )
+  prevalence <- unique(curve$prevalence)[[1L]]
+  plot <- ggplot2::ggplot(
+    curve,
+    ggplot2::aes(x = .data$recall, y = .data$precision, colour = .data$label)
+  ) +
+    ggplot2::geom_hline(
+      yintercept = prevalence, linetype = "dotted", colour = "grey50"
+    ) +
+    ggplot2::geom_path(linewidth = 0.8) +
+    ggplot2::coord_equal(xlim = c(0, 1), ylim = c(0, 1)) +
+    ggplot2::labs(x = "Recall (sensitivity)", y = "Precision (PPV)",
+                  colour = NULL) +
+    .uniml_scale_color(values = values) +
+    theme_uniml()
+  .uniml_style_plot(plot, theme, title, subtitle, caption)
+}
+
+#' @rdname plot_pr_curve
+#' @export
+plot_pr_curve.uniml_binary <- function(x, models = NULL, palette = "bmj", ...) {
+  plot_pr_curve.uniml_result(
+    .as_uniml_result(x),
+    models = models,
+    palette = palette,
+    ...
+  )
+}
+
+#' @rdname plot_pr_curve
+#' @export
+plot_pr_curve.PredictionClassif <- function(x, positive = NULL, ...) {
+  plot_pr_curve(as_uniml_binary(x, positive = positive), ...)
+}
+
+#' @rdname plot_pr_curve
+#' @export
+plot_pr_curve.data.frame <- function(x, models = NULL, palette = "bmj", ...) {
+  plot_pr_curve.uniml_result(x, models = models, palette = palette, ...)
 }
 
 .as_uniml_result <- function(x, source_class = NULL) {

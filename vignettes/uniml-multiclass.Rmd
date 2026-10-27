@@ -30,12 +30,20 @@ What the package fixes for you is the convention:
 
 | Quantity | Definition |
 | --- | --- |
-| `auc` | Macro one-vs-rest AUC, every class weighted equally (`mlr3measures::mauc_au1u`) |
+| `auc` | Hand and Till multiclass AUC: the mean over ordered class pairs of the AUC on class `i`'s own score column (`mlr3measures::mauc_au1u`) |
+| `auc_ovr` | Macro one-vs-rest AUC: each class against the rest, then the unweighted mean; equals `mean(per_class$auc)` |
+| `micro_auc` | Micro-average AUC: all (patient, class) pairs pooled into one binary problem |
 | `brier` | Multi-class Brier score: mean over rows of the summed squared class errors |
 | `logloss` | Mean negative log probability of the observed class |
 | `sensitivity`, `specificity`, `ppv`, `npv`, `f1` | Macro averages of the one-vs-rest values |
+| `micro_specificity` | Specificity pooled over the one-vs-rest cells |
 | `balanced_accuracy` | Mean per-class recall, which equals the macro sensitivity |
 | `kappa` | Cohen's kappa on the k-by-k table |
+
+There is no micro precision, micro recall, or micro F1. For a single-label
+multiclass outcome all three are identically the accuracy — the same number three
+times — so the package reports accuracy once and says why. Micro AUC and micro
+specificity are the two micro numbers that carry information of their own.
 
 Every number is reproducible from the confusion matrix that comes with it, and
 `tests/testthat/test-multiclass.R` pins them to `mlr3measures` and to a direct

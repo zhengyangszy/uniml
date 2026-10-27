@@ -159,6 +159,62 @@ test_that("the confusion table and its per-class rates are self-consistent", {
   expect_equal(per_class$tp + per_class$fp, as.numeric(colSums(confusion)))
 })
 
+test_that("the three multiclass AUCs are three different estimands", {
+  set.seed(31)
+  n <- 400L
+  classes <- c("low", "mid", "high")
+  truth <- factor(
+    sample(classes, n, replace = TRUE, prob = c(0.7, 0.2, 0.1)),
+    levels = classes
+  )
+  prob <- matrix(stats::runif(n * 3L), nrow = n,
+                 dimnames = list(NULL, classes))
+  # A weak signal that favours the common class, so macro and micro disagree.
+  for (index in seq_along(classes)) {
+    prob[, index] <- prob[, index] +
+      c(0.25, 0.15, 0.05)[[index]] * (as.character(truth) == classes[[index]])
+  }
+  prob <- prob / rowSums(prob)
+  metrics <- calc_metrics(prob, truth)
+
+  # `auc` is Hand and Till: whatever mlr3measures computes, unchanged.
+  expect_equal(
+    metrics$auc,
+    mlr3measures::mauc_au1u(truth, prob),
+    tolerance = 1e-12
+  )
+  # `per_class$auc` is one-vs-rest, and `auc_ovr` is its unweighted mean.
+  expect_length(metrics$per_class$auc, 3L)
+  expect_equal(metrics$auc_ovr, mean(metrics$per_class$auc), tolerance = 1e-12)
+  # Hand and Till is not the one-vs-rest average; if it ever becomes one, the
+  # documentation above is wrong and this test should fail.
+  expect_false(isTRUE(all.equal(metrics$auc, metrics$auc_ovr, tolerance = 1e-6)))
+  # Micro pools every (patient, class) pair and differs from both.
+  expect_true(metrics$micro_auc > 0 && metrics$micro_auc < 1)
+  expect_false(isTRUE(all.equal(metrics$micro_auc, metrics$auc, tolerance = 1e-6)))
+
+  # Micro precision, recall, and F1 are all the accuracy; that is why they are
+  # not separate columns.
+  cells <- metrics$per_class
+  micro_precision <- sum(cells$tp) / sum(cells$tp + cells$fp)
+  micro_recall <- sum(cells$tp) / sum(cells$tp + cells$fn)
+  micro_f1 <- 2 * sum(cells$tp) /
+    (2 * sum(cells$tp) + sum(cells$fp) + sum(cells$fn))
+  expect_equal(micro_precision, metrics$accuracy, tolerance = 1e-12)
+  expect_equal(micro_recall, metrics$accuracy, tolerance = 1e-12)
+  expect_equal(micro_f1, metrics$accuracy, tolerance = 1e-12)
+  # Micro specificity is its own number.
+  expect_equal(
+    metrics$micro_specificity,
+    sum(cells$tn) / sum(cells$tn + cells$fp),
+    tolerance = 1e-12
+  )
+  expect_false(isTRUE(all.equal(metrics$micro_specificity, metrics$accuracy)))
+
+  expect_true(all(c("auc", "auc_ovr", "micro_auc", "micro_specificity") %in%
+                    .multiclass_metric_names()))
+})
+
 test_that("multiclass metric input is validated", {
   prediction <- multiclass_prediction()
 

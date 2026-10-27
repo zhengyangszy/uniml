@@ -17,6 +17,7 @@
   title = NULL,
   subtitle = NULL,
   caption = NULL,
+  micro = TRUE,
   ...
 )
 
@@ -48,6 +49,10 @@ plot_roc(x, ...)
 \item{theme}{A \code{ggplot2} theme applied to the figure.}
 
 \item{title, subtitle, caption}{Optional figure labels.}
+
+\item{micro}{For a multiclass prediction, whether to add the micro-average
+curve beside the one-vs-rest curves. The subtitle reports all three AUCs
+(Hand-Till, macro one-vs-rest, micro).}
 
 \item{...}{Reserved for method-specific arguments.}
 

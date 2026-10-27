@@ -1,3 +1,36 @@
+# uniml 0.3.5
+
+The last two gaps from the reporting audit: a precision-recall figure, and the
+macro/micro split for multiclass discrimination.
+
+## Precision-recall
+
+* New `plot_pr_curve()` draws the precision-recall curve with the prevalence as a
+  reference line, for the imbalanced outcomes where the ROC curve flatters a model.
+  The curve and the label come from `PRROC::pr.curve()`, the same code
+  `mlr3measures::prauc()` calls, so the figure and `calc_metrics()$pr_auc` cannot
+  disagree.
+
+## Multiclass discrimination, named properly
+
+* **Correction.** `auc` was documented as a "macro one-vs-rest AUC". It is not:
+  `mlr3measures::mauc_au1u` is the Hand and Till multiclass AUC, the mean over
+  ordered class pairs computed on class `i`'s own score column. The documentation,
+  the vignette table, and the tests said the wrong thing; they now say the right
+  one.
+* New `auc_ovr`: the macro one-vs-rest AUC, the unweighted mean of the per-class
+  one-vs-rest AUCs. This is the number a paper means by "macro-average AUC".
+* New `micro_auc`: all (patient, class) pairs pooled into one binary problem.
+  Micro high with macro low means the model is carried by the common classes.
+* New `per_class$auc`: one-vs-rest AUC for each class, so a class that the model
+  cannot separate is visible instead of averaged away.
+* New `micro_specificity`. There is deliberately no micro precision, recall, or F1:
+  for a single-label multiclass outcome all three are identically the accuracy, and
+  a test pins that identity.
+* `plot_roc()` for multiclass predictions adds the micro-average curve beside the
+  per-class curves and puts all three AUCs in the subtitle; `micro = FALSE` draws
+  only the per-class curves.
+
 # uniml 0.3.4
 
 * `set_feature_selection(methods = "none")` is now a documented choice: it keeps

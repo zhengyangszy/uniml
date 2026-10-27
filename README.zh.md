@@ -19,7 +19,7 @@
 | L4 建模 | `make_task()`、`resolve_learners()`、`train_model()`、`tune_model()` | 基于 mlr3 的学习器、调参、交叉验证 |
 | L5 统计 | `calc_metrics()`、`calc_ci()`、`calibration_metrics()`、`calibrate_probabilities()`、`delong_test()`、`hl_test()`、`calc_nri_idi()`、`dca()`、`find_threshold()` | 指标与置信区间、校准截距/斜率、统计检验、决策曲线 |
 | L6 结果 | `assemble_result()`、`rank_models()`、`export_results()`、`save_result()`、`read_result()`、`tripod_ai_check()` | 模型排序、结果导出、模型交接、TRIPOD+AI 自检 |
-| L7 绘图 | `plot_roc()`、`plot_calibration()`、`plot_dca()`、`plot_confusion()`、`theme_uniml()` | 论文级图形 |
+| L7 绘图 | `plot_roc()`、`plot_pr_curve()`、`plot_calibration()`、`plot_dca()`、`plot_confusion()`、`theme_uniml()` | 论文级图形 |
 | L8 可解释性 | `explain_shap()`、`plot_shap_*()`、`extract_thresholds()` | SHAP 重要性、蜂群、依赖、瀑布图 |
 | L9 工作流 | `run_workflow()`、`predict_uniml()` | 一键跑通与复用已拟合状态 |
 

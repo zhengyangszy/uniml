@@ -1,22 +1,37 @@
 # L4 multiclass metrics -------------------------------------------------------
 #
 # Multiclass metrics are reported as one number per model where that is
-# meaningful (accuracy, multi-class Brier, log loss, macro one-vs-rest AUC) plus
-# a per-class table. The conventions are fixed here once so that a figure, a
-# table, and a paper cannot disagree:
+# meaningful (accuracy, multi-class Brier, log loss, macro and micro one-vs-rest
+# AUC) plus a per-class table. The conventions are fixed here once so that a
+# figure, a table, and a paper cannot disagree:
 #
-# * `auc` is the macro one-vs-rest AUC averaged over classes with equal weight
-#   (`mlr3measures::mauc_au1u`), not a weighted or micro average.
+# * `auc` is the Hand and Till multiclass AUC (`mlr3measures::mauc_au1u`): the
+#   mean over ordered class pairs of the AUC that uses class `i`'s own score
+#   column on the patients of classes `i` and `j`. It is neither a one-vs-rest
+#   average nor a weighted one.
+# * `auc_ovr` is the macro one-vs-rest AUC: for each class, class `i` against
+#   everyone else, then the unweighted mean. It equals the mean of the per-class
+#   AUCs in `per_class$auc`, and it is the number to report when a paper says
+#   "macro-average AUC".
+# * `micro_auc` pools every (patient, class) pair into one binary problem, so it
+#   weights each class by how many patients have it. Micro high with macro low
+#   means the model is carried by the common classes; micro low means it is not
+#   working anywhere.
 # * `brier` is the multi-class Brier score, the mean over rows of the sum of
 #   squared class-wise errors.
 # * `sensitivity`, `specificity`, `ppv`, `npv`, and `f1` are macro averages of
 #   the one-vs-rest values, so every class contributes equally regardless of how
 #   rare it is.
+# * `micro_specificity` pools the one-vs-rest confusion cells. There is no
+#   micro precision, recall, or F1 to report alongside it: for a single-label
+#   multiclass outcome all three are identically the accuracy, which is already a
+#   column. Adding them would be three copies of one number.
 
 .multiclass_metric_names <- function() {
   c(
-    "auc", "accuracy", "balanced_accuracy", "kappa", "logloss", "brier",
-    "sensitivity", "specificity", "ppv", "npv", "f1"
+    "auc", "auc_ovr", "micro_auc", "accuracy", "balanced_accuracy", "kappa",
+    "logloss", "brier", "sensitivity", "specificity", "micro_specificity",
+    "ppv", "npv", "f1"
   )
 }
 
@@ -82,7 +97,8 @@
   out
 }
 
-.multiclass_per_class <- function(confusion) {
+.multiclass_per_class <- function(confusion, prob = NULL, observed = NULL,
+                                  classes = NULL) {
   n <- sum(confusion)
   support <- rowSums(confusion)
   predicted <- colSums(confusion)
@@ -112,7 +128,45 @@
   })
   out <- do.call(rbind, rows)
   rownames(out) <- NULL
+  if (!is.null(prob) && !is.null(observed) && !is.null(classes)) {
+    out$auc <- vapply(seq_along(classes), function(i) {
+      .one_vs_rest_auc(observed == classes[[i]], prob[, i])
+    }, numeric(1))
+  }
   out
+}
+
+# One-vs-rest AUC for a single class. `mlr3measures::auc` needs both classes, so a
+# class that is absent from the observed labels returns NA rather than an error.
+.one_vs_rest_auc <- function(event, score) {
+  event <- as.logical(event)
+  if (length(unique(event)) < 2L) {
+    return(NA_real_)
+  }
+  .safe_metric(
+    mlr3measures::auc,
+    factor(event, levels = c(FALSE, TRUE)),
+    score,
+    positive = "TRUE"
+  )
+}
+
+# Micro averages over every one-vs-rest decision: each (row, class) pair counts as
+# one binary observation. For a single-label multiclass outcome this makes micro
+# precision, micro recall, and micro F1 all equal to accuracy, so only micro AUC
+# and micro specificity are separate numbers — reported here instead of adding
+# three columns that duplicate accuracy.
+.multiclass_micro <- function(prob, observed, classes, per_class) {
+  n <- nrow(prob)
+  k <- length(classes)
+  event <- rep(observed, times = k) == rep(classes, each = n)
+  list(
+    auc = .one_vs_rest_auc(event, as.numeric(prob)),
+    specificity = .ratio_or_na(
+      sum(per_class$tn),
+      sum(per_class$tn) + sum(per_class$fp)
+    )
+  )
 }
 
 .macro_mean <- function(values) {
@@ -146,7 +200,8 @@
 
   predicted <- classes[max.col(prob, ties.method = "first")]
   confusion <- .multiclass_confusion(predicted, observed, classes)
-  per_class <- .multiclass_per_class(confusion)
+  per_class <- .multiclass_per_class(confusion, prob, observed, classes)
+  micro <- .multiclass_micro(prob, observed, classes, per_class)
 
   accuracy <- if (n == 0L) NA_real_ else sum(diag(confusion)) / n
   support <- rowSums(confusion)
@@ -187,6 +242,9 @@
     ppv = .macro_mean(per_class$ppv),
     npv = .macro_mean(per_class$npv),
     f1 = .macro_mean(per_class$f1),
+    auc_ovr = .macro_mean(per_class$auc),
+    micro_auc = micro$auc,
+    micro_specificity = micro$specificity,
     confusion = confusion,
     per_class = per_class,
     n_samples = as.integer(n),

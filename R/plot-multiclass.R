@@ -7,7 +7,7 @@
 # a stated convention (per-class reliability, top-label, or a multinomial
 # score), and none of them is a drop-in replacement for the binary plot.
 
-.multiclass_roc_curve <- function(prob, truth, classes) {
+.multiclass_roc_curve <- function(prob, truth, classes, micro = TRUE) {
   rows <- lapply(classes, function(class) {
     if (requireNamespace("pROC", quietly = TRUE)) {
       event <- as.integer(truth == class)
@@ -51,6 +51,18 @@
       curve[order(curve$specificity, curve$sensitivity), , drop = FALSE]
     }
   })
+  if (isTRUE(micro)) {
+    # Micro average: every (patient, class) pair as one binary observation.
+    n <- nrow(prob)
+    event <- rep(as.character(truth), times = length(classes)) ==
+      rep(classes, each = n)
+    if (length(unique(event)) == 2L) {
+      micro_curve <- .micro_roc_rows(event, as.numeric(prob))
+      if (!is.null(micro_curve)) {
+        rows[[length(rows) + 1L]] <- micro_curve
+      }
+    }
+  }
   rows <- rows[!vapply(rows, is.null, logical(1))]
   if (length(rows) == 0L) {
     return(NULL)
@@ -60,22 +72,67 @@
   out
 }
 
+.micro_roc_rows <- function(event, score) {
+  if (requireNamespace("pROC", quietly = TRUE)) {
+    roc <- tryCatch(
+      pROC::roc(as.integer(event), score, quiet = TRUE, direction = "<"),
+      error = function(e) NULL
+    )
+    if (is.null(roc)) {
+      return(NULL)
+    }
+    return(data.frame(
+      class = "micro-average",
+      specificity = rev(roc$specificities),
+      sensitivity = rev(roc$sensitivities),
+      stringsAsFactors = FALSE
+    ))
+  }
+  thresholds <- sort(unique(c(0, score, 1)), decreasing = TRUE)
+  positive <- sum(event)
+  negative <- sum(!event)
+  curve <- data.frame(
+    class = "micro-average",
+    specificity = vapply(thresholds, function(cut) {
+      sum(!event & score < cut) / negative
+    }, numeric(1)),
+    sensitivity = vapply(thresholds, function(cut) {
+      sum(event & score >= cut) / positive
+    }, numeric(1)),
+    stringsAsFactors = FALSE
+  )
+  curve[order(curve$specificity, curve$sensitivity), , drop = FALSE]
+}
+
 #' @rdname plot_roc
 #' @export
 plot_roc.uniml_multiclass <- function(x, palette = "bmj", theme = theme_uniml(),
                                       title = NULL, subtitle = NULL,
-                                      caption = NULL, ...) {
-  curve <- .multiclass_roc_curve(x$prob, x$truth, x$classes)
+                                      caption = NULL, micro = TRUE, ...) {
+  curve <- .multiclass_roc_curve(x$prob, x$truth, x$classes, micro = micro)
   if (is.null(curve)) {
     .abort("Every class needs at least one observation to draw an ROC curve.")
   }
-  curve$class <- factor(curve$class, levels = x$classes)
+  levels <- c(x$classes, if ("micro-average" %in% curve$class) "micro-average")
+  curve$class <- factor(curve$class, levels = levels)
+  metrics <- .calc_multiclass_metrics(
+    x$prob,
+    x$truth,
+    metrics = c("auc", "auc_ovr", "micro_auc")
+  )
+  if (is.null(subtitle)) {
+    subtitle <- sprintf(
+      "Hand-Till %.3f; macro one-vs-rest %.3f; micro %.3f",
+      metrics$auc, metrics$auc_ovr, metrics$micro_auc
+    )
+  }
   plot <- ggplot2::ggplot(
     curve,
     ggplot2::aes(
       x = 1 - .data$specificity,
       y = .data$sensitivity,
-      colour = .data$class
+      colour = .data$class,
+      linetype = .data$class
     )
   ) +
     ggplot2::geom_abline(
@@ -86,7 +143,14 @@ plot_roc.uniml_multiclass <- function(x, palette = "bmj", theme = theme_uniml(),
     ) +
     ggplot2::geom_line(linewidth = 0.8) +
     ggplot2::scale_colour_manual(
-      values = .uniml_plot_palette(length(x$classes), palette = palette),
+      values = .uniml_plot_palette(length(levels), palette = palette),
+      name = "Class"
+    ) +
+    ggplot2::scale_linetype_manual(
+      values = stats::setNames(
+        c(rep("solid", length(x$classes)), "dashed")[seq_along(levels)],
+        levels
+      ),
       name = "Class"
     ) +
     ggplot2::coord_equal() +

@@ -22,7 +22,7 @@ own, and `run_workflow()` wires them together.
 | L4 modeling | `make_task()`, `resolve_learners()`, `train_model()`, `tune_model()` | mlr3 learners, tuning, cross validation |
 | L5 statistics | `calc_metrics()`, `calc_ci()`, `calibration_metrics()`, `calibrate_probabilities()`, `delong_test()`, `hl_test()`, `calc_nri_idi()`, `dca()`, `find_threshold()` | Metrics with confidence intervals, calibration numbers, tests, decision curves |
 | L6 results | `assemble_result()`, `rank_models()`, `export_results()`, `save_result()`, `read_result()` | Ranking, on-disk export, and a result you can hand over |
-| L7 plots | `plot_roc()`, `plot_calibration()`, `plot_dca()`, `plot_confusion()`, `theme_uniml()` | Performance figures |
+| L7 plots | `plot_roc()`, `plot_pr_curve()`, `plot_calibration()`, `plot_dca()`, `plot_confusion()`, `theme_uniml()` | Performance figures |
 | L8 SHAP | `explain_shap()`, `plot_shap_importance()`, `plot_shap_beeswarm()`, `plot_shap_dependence()`, `plot_shap_waterfall()`, `extract_thresholds()` | Interpretability |
 | L9 workflow | `run_workflow()`, `predict_uniml()` | End-to-end run and reuse of fitted state |
 

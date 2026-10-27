@@ -67,9 +67,11 @@ is not it yet.
   NRI/IDI, DeLong, and Hosmer-Lemeshow need one positive class. They are refused
   for multiclass rather than silently given a convention. Calibration *is*
   available, under two stated conventions: top-label ECE/MCE and class-wise ECE
-  (`multiclass_calibration()`). Multiclass *recalibration* is not: Platt scaling
-  and isotonic regression are one-vs-rest by nature, and averaging them does not
-  calibrate a multinomial distribution.
+  (`multiclass_calibration()`). Recalibration *is* available too, as temperature
+  scaling (`calibrate_probabilities()`): one fitted scalar, which cannot change the
+  predicted class. The stronger Dirichlet calibration is not, because its
+  `K^2 + K` parameters are not identifiable on the sample size this package
+  targets.
 - **Survival is out of scope.** It is a separate package with its own data model
   (time and status, censoring) and is not implemented here.
 - **The example cohorts are synthetic.** Both files in `inst/extdata` come from

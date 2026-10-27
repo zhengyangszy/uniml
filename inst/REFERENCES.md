@@ -97,6 +97,8 @@ directly. DOIs are given where the publisher assigns one.
 | Top-label calibration (ECE, MCE) | Guo C, Pleiss G, Sun Y, Weinberger KQ (2017). On calibration of modern neural networks. *Proceedings of the 34th International Conference on Machine Learning*, 70, 1321-1330. | `multiclass_calibration()`, `calc_metrics()`, `plot_calibration()` |
 | Class-wise calibration | Kull M, Perello-Nieto M, Kängsepp M, Silva Filho T, Song H, Flach P (2019). Beyond temperature scaling: obtaining well-calibrated multi-class probabilities with Dirichlet calibration. *Advances in Neural Information Processing Systems*, 32. | `multiclass_calibration()`, `calc_metrics()$ece_classwise` |
 | Why ECE is not a scoring rule | Van Calster B, McLernon DJ, van Smeden M, Wynants L, Steyerberg EW (2019). Calibration: the Achilles heel of predictive analytics. *BMC Medicine*, 17, 230. doi:10.1186/s12916-019-1466-7 | `multiclass_calibration()`, `plot_calibration()` |
+| Temperature scaling | Guo C, Pleiss G, Sun Y, Weinberger KQ (2017), as above | `calibrate_probabilities()` |
+| Matrix / Dirichlet scaling (not implemented) | Kull M et al. (2019), as above. Fits `softmax(W log p + b)`, which is `K^2 + K` parameters and is not identifiable on the sample sizes this package targets | documented as out of scope |
 
 ## Explainability
 

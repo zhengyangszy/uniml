@@ -1,7 +1,7 @@
 Package: uniml
 Type: Package
 Title: Unified Predictive Modeling Toolkit
-Version: 0.4.0
+Version: 0.5.0
 Authors@R: person("Steve", "Shi", email = "19943405117@163.com", role =
         c("aut", "cre"))
 Author: Steve Shi [aut, cre]

@@ -55,8 +55,9 @@ Hosmer–Lemeshow 检验、NRI/IDI、决策曲线、多重插补的 Rubin 池化
 - **部分二分类方法没有多分类对应物。** 决策曲线、NRI/IDI、DeLong、
   Hosmer–Lemeshow 都需要一个阳性类；多分类下明确拒绝，而不是替你选一个约定。
   校准**有**多分类版本，但把约定写在明处：top-label 的 ECE/MCE 与 class-wise ECE
-  （`multiclass_calibration()`）。多分类的**重新校准**没有：Platt 与 isotonic 本质是
-  一对其余，把 K 个拼起来并不会得到一个校准好的多项分布。
+  （`multiclass_calibration()`）。**重新校准也有**，用 temperature scaling
+  （`calibrate_probabilities()`）：只估一个标量，**不会改变预测类别**。
+  更强的 Dirichlet 校准没有，因为它的 `K^2 + K` 个参数在本包面向的样本量上不可识别。
 - **生存分析不在本包范围内。** 它是独立包（数据模型不同：时间 + 状态 + 删失）。
 - **示例数据是模拟的。** `inst/extdata` 两个文件都由
   `data-raw/simulate-cvd-mortality.R` 生成，6.5% 的事件率是模拟参数。它们的作用是让

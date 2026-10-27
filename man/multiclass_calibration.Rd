@@ -43,6 +43,11 @@ ECE and MCE are not proper scoring rules and must not be used to choose between
 models. Use the Brier score or the log loss from \code{calc_metrics()} for that, and
 read ECE/MCE as "how wrong is the stated probability when the model is
 wrong".
+
+Note that a two-class matrix is \emph{not} the same problem as a binary outcome with
+\code{calc_metrics()}: there the binning is on the probability of the event, here it
+is on the confidence in the class the model picked. The two agree only through
+\code{per_class$ece} for the positive class, which is exactly the binary number.
 }
 \examples{
 prob <- rbind(

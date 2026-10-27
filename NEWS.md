@@ -1,3 +1,48 @@
+# uniml 0.5.0
+
+Recalibration for multiclass models, which 0.4.0 could measure but not fix.
+
+## Temperature scaling
+
+* `calibrate_probabilities()` gains a multiclass method. It fits the single scalar
+  `T` that makes a model's reported probabilities match how often it is right, and
+  returns `softmax(log(p) / T)`: `T > 1` softens an over-confident model, `T < 1`
+  sharpens an under-confident one (Guo et al. 2017).
+
+* Because the division is monotone and applied to every class in the same way,
+  **temperature scaling cannot change which class the model ranks first.** The
+  confusion matrix, the accuracy, and every threshold metric come out identical;
+  only the probabilities attached to them move.
+
+* `T` is fitted by minimising the log loss, and `T = 1` is kept whenever it is at
+  least as good, so the fitted scalar never degrades the data it was fitted on. It
+  is a bounded one-dimensional search, not a matrix fit, so a few hundred patients
+  is enough.
+
+* `calibrated` is cross-fitted (each fold's scalar comes from the other folds), so
+  `metrics_before` / `metrics_after` are an honest before/after. That honesty has a
+  cost, stated in the documentation: on a model that was already calibrated the
+  cross-fitted log loss can come out a hair worse, because each fold's scalar is a
+  noisy estimate of 1.
+
+* `new_probs` / `new_labels` apply a scalar fitted on the validation set to the
+  test set, with the before/after table reported on that set. `method = "none"`
+  returns the raw probabilities, as in the binary path.
+
+* A probability matrix can be passed directly; a matrix with fewer than three
+  class columns is refused with a pointer to the binary calibrators, and a hard 0/1
+  prediction is clamped rather than breaking the fit.
+
+* `set_evaluation(spec, calibration = )` is now task-type aware: a multiclass
+  specification accepts `"temperature"` or `"none"`, a binary one accepts
+  `"platt"`, `"platt_segment"`, `"isotonic"`, or `"none"`. The two sets are
+  disjoint, so a specification cannot ask for a method its task type does not have.
+
+* **Deliberately not implemented:** Dirichlet calibration (Kull et al. 2019), the
+  stronger method, fits `K^2 + K` parameters, can change the predicted class, and
+  is not identifiable on the sample size this package targets. The documentation
+  says so where the method would be expected.
+
 # uniml 0.4.0
 
 Multiclass calibration, which the package previously declined to compute because

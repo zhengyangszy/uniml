@@ -542,10 +542,17 @@ validate_uniml_spec <- function(x) {
 
   .assert_character_vector(x$evaluation$metrics, "evaluation$metrics")
   .assert_choice(x$evaluation$ci, "evaluation$ci", c("bootstrap", "none"))
+  # A binary outcome is recalibrated one-vs-none; a multinomial one needs a single
+  # scalar applied to every class at once. The two sets are deliberately disjoint,
+  # so a specification cannot ask for a method the task type does not have.
   .assert_choice(
     x$evaluation$calibration,
     "evaluation$calibration",
-    c("platt", "platt_segment", "isotonic", "none")
+    if (identical(x$task_type, "multiclass")) {
+      c("temperature", "none")
+    } else {
+      c("platt", "platt_segment", "isotonic", "none")
+    }
   )
   .assert_step_args(
     x$evaluation$calibration_args,

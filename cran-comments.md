@@ -15,7 +15,7 @@ There are currently no downstream dependencies for this package.
 
 ## Notes
 
-* This is the first CRAN release of `uniml` (0.4.0).
+* This is the first CRAN release of `uniml` (0.5.0).
 
 * Every package in `Imports` and `Suggests` is available on CRAN. An earlier
   development version suggested `mlr3extralearners`, which is not on CRAN; that
@@ -45,10 +45,11 @@ There are currently no downstream dependencies for this package.
 
 * Multiclass calibration is reported under two stated conventions (top-label
   ECE/MCE and class-wise ECE) by `multiclass_calibration()`, rather than under a
-  convention chosen silently. Multiclass *recalibration* is deliberately absent:
-  Platt scaling and isotonic regression are one-vs-rest and do not produce a
-  calibrated multinomial distribution, and the text says so where the function
-  would be expected.
+  convention chosen silently. Multiclass recalibration is temperature scaling,
+  one scalar fitted by a bounded one-dimensional search, which cannot change the
+  predicted class; Dirichlet calibration is deliberately absent because its
+  `K^2 + K` parameters are not identifiable on the sample sizes this package
+  targets, and the text says so where the method would be expected.
 
 * The remote CRAN incoming check could not reach CRAN from the machine used for
   this submission (`PACKAGES.in` timed out), so it was run with

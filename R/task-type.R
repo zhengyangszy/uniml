@@ -241,11 +241,15 @@ calc_metrics.default <- function(x, ...) {
 
 #' Calibrate predicted probabilities
 #'
-#' S3 generic that dispatches probability calibration by task type. Method
-#' bodies are added in later milestones.
+#' S3 generic that dispatches probability calibration by task type. A binary
+#' outcome uses a one-vs-none recalibration (`"platt"`, `"platt_segment"`,
+#' `"isotonic"`); a multiclass outcome uses temperature scaling, because a
+#' multinomial model needs one scalar applied to every class rather than `K`
+#' independent binary calibrators. See
+#' [calibrate_probabilities.uniml_multiclass()] for the multiclass conventions.
 #'
 #' @param x An object whose class identifies the task type, such as
-#'   `"uniml_binary"`.
+#'   `"uniml_binary"` or a probability matrix with three or more class columns.
 #' @param ... Method-specific arguments.
 #'
 #' @return The method return value.

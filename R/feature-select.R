@@ -274,6 +274,7 @@
       importance = "rf_importance",
       rfe = "rfe",
       multivariate = "multivariate",
+      none = "none",
       .abort(sprintf("Unsupported feature-selection method: \"%s\".", method))
     )
   }, character(1))
@@ -988,19 +989,26 @@ select_features <- function(data, spec) {
     spec$outcome
   )
   methods <- unique(.selection_methods(selection$methods))
-  if (length(methods) == 0L) {
-    # No method means no selection: keep every candidate, which is what a task
-    # type that has no selection method of its own expects.
+  if (length(methods) == 0L || identical(methods, "none")) {
+    # "none" means no selection: keep every candidate. A task type whose outcome
+    # is not a class label (a survival time and status, say) asks for this
+    # explicitly, because the selectors here screen the outcome column and would
+    # otherwise screen on the wrong thing.
     selected <- colnames(design$matrix)
-    return(.new_selection_result(
+    details <- data.frame(
+      feature = selected,
+      selected = TRUE,
+      stringsAsFactors = FALSE
+    )
+    result <- .new_selection_result(
       method = "none",
       selected_features = selected,
-      details = data.frame(
-        feature = selected,
-        selected = TRUE,
-        stringsAsFactors = FALSE
-      )
-    ))
+      details = details
+    )
+    if (!is.null(collinearity)) {
+      result$collinearity <- collinearity
+    }
+    return(result)
   }
   method_results <- vector("list", length(methods))
   names(method_results) <- methods

@@ -1,3 +1,11 @@
+# uniml 0.3.4
+
+* `set_feature_selection(methods = "none")` is now a documented choice: it keeps
+  every candidate instead of running a selector. A task type whose outcome is not
+  a class label (a survival time and status, say) needs this, because every other
+  method screens the outcome column. `select_features()` and the workflow treat
+  `"none"` and an empty method vector the same way.
+
 # uniml 0.3.3
 
 * `select_features()` treats an empty `methods` vector as "no selection" and keeps

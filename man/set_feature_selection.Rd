@@ -23,7 +23,9 @@ set_feature_selection(
 \arguments{
 \item{spec}{A \code{uniml_spec} object.}
 
-\item{methods}{Feature-selection method names.}
+\item{methods}{Feature-selection method names, or \code{"none"} to keep every
+candidate. \code{"none"} exists for task types whose outcome is not a class label:
+the other methods screen the outcome column, which would be the wrong column.}
 
 \item{lambda}{LASSO lambda rule.}
 

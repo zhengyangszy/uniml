@@ -462,7 +462,7 @@ validate_uniml_spec <- function(x) {
     "selection$methods",
     choices = c(
       "univariate", "logistic", "single", "lasso", "boruta", "rf",
-      "rf_importance", "importance", "rfe", "multivariate"
+      "rf_importance", "importance", "rfe", "multivariate", "none"
     )
   )
   .assert_choice(x$selection$lambda, "selection$lambda", c("1se", "min"))
@@ -1301,7 +1301,9 @@ set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode =
 #' Set feature-selection options
 #'
 #' @param spec A `uniml_spec` object.
-#' @param methods Feature-selection method names.
+#' @param methods Feature-selection method names, or `"none"` to keep every
+#'   candidate. `"none"` exists for task types whose outcome is not a class label:
+#'   the other methods screen the outcome column, which would be the wrong column.
 #' @param lambda LASSO lambda rule.
 #' @param p_threshold Univariate p-value threshold.
 #' @param maxRuns Boruta maximum runs.

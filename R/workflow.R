@@ -392,10 +392,11 @@
 }
 
 .workflow_select_features <- function(data, spec, adapter = NULL) {
-  if (length(spec$selection$methods) == 0L) {
-    # A task type with no selection method of its own keeps the columns it calls
-    # features, rather than borrowing a classification method that would screen on
-    # the wrong outcome or pick up its own outcome columns.
+  declared <- as.character(spec$selection$methods)
+  if (length(declared) == 0L || identical(unique(declared), "none")) {
+    # No selection: keep the columns the task type calls features, rather than
+    # borrowing a classification selector that would screen on the wrong outcome
+    # or pick up its own outcome columns.
     features <- if (!is.null(adapter) && !is.null(adapter$features)) {
       as.character(adapter$features(data, spec))
     } else if (length(spec$preprocess$vars) > 0L) {

@@ -588,7 +588,7 @@ assemble_result <- function(data_info = NULL, preprocess = NULL, selection = NUL
     return(list(
       "params.csv" = params,
       "ece_brier.csv" = calibration$metrics,
-      "schema.csv" = calibration$summary,
+      "summary.csv" = calibration$summary,
       "hl.csv" = NULL
     ))
   }

@@ -77,7 +77,11 @@ spec <- set_evaluation(
   select_on = "validation"
 )
 
-# 6. 切分并跑通
+# 6. SHAP：Kernel SHAP 是工作流里最贵的一步，解释行数与背景样本量由规格控制，
+#    这里取小值让 vignette 跑得快；要出论文级图时把两个数调大即可。
+spec <- set_explain(spec, n_explain = 20, bg_n = 20)
+
+# 7. 切分并跑通
 split <- make_split(as_uniml_data(development, spec), prop = c(0.8, 0.2),
                     stratify = TRUE, seed = 123)
 
@@ -85,7 +89,7 @@ result <- run_workflow(
   spec,
   train = split$train$data,
   validation = split$validation$data,
-  ci_R = 100
+  ci_R = 25
 )
 ```
 
@@ -120,7 +124,7 @@ plot_dca(result)
 ## 解释模型
 
 ```{r shap, fig.cap = "最优模型的 SHAP 重要性"}
-explained <- explain_shap(result, model = "best", n_explain = 60, bg_n = 40)
+explained <- explain_shap(result, model = "best", n_explain = 25, bg_n = 15)
 plot_shap_importance(explained)
 ```
 

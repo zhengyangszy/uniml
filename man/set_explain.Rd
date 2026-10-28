@@ -8,6 +8,8 @@ set_explain(
   spec,
   model = "best",
   plots = c("importance", "beeswarm", "dependence", "waterfall"),
+  n_explain = NULL,
+  bg_n = NULL,
   thresholds = NULL,
   ...
 )
@@ -15,10 +17,17 @@ set_explain(
 \arguments{
 \item{spec}{A \code{uniml_spec} object.}
 
-\item{model}{Model to explain.}
+\item{model}{Model to explain. \code{"none"} skips SHAP entirely, which is the way
+to keep a workflow fast when no explanation is needed.}
 
 \item{plots}{SHAP plots to produce: any of \code{"importance"}, \code{"beeswarm"},
 \code{"dependence"}, \code{"waterfall"}, and \code{"force"}.}
+
+\item{n_explain}{Number of rows to explain. Kernel SHAP costs roughly one
+prediction pass per explained row, so this is the first knob to turn when a
+workflow feels slow.}
+
+\item{bg_n}{Size of the background sample Kernel SHAP averages over.}
 
 \item{thresholds}{Optional list configuring SHAP zero-crossing thresholds:
 \code{targets} (character vector), \code{interaction}, \code{min_n}, \code{min_unique}, \code{span}.}

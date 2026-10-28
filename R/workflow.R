@@ -1789,7 +1789,9 @@
       learners,
       data = .workflow_shap_data(result),
       seed = as.integer(spec$seed),
-      positive = spec$positive
+      positive = spec$positive,
+      n_explain = spec$explain$n_explain %||% 40L,
+      bg_n = spec$explain$bg_n %||% 40L
     ),
     error = function(e) {
       warning(

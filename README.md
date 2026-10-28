@@ -1,6 +1,6 @@
 # uniml
 
-**English** | [简体中文](README.zh.md)
+**English** | [简体中文](https://github.com/zhengyangszy/uniml/blob/main/README.zh.md)
 
 [![R-CMD-check](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml)
 

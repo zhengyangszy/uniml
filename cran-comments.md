@@ -1,3 +1,30 @@
+## Resubmission
+
+This is a resubmission of uniml 0.5.1, which fixes the NOTE from the incoming
+pre-test of 0.5.0.
+
+* The spell check flagged "SHAP", "interpretability", and "multiclass" in
+  `DESCRIPTION`. The words are correct; they are now declared in
+  `inst/WORDLIST`, which is the mechanism for this.
+
+* The link to the Chinese README in `README.md` was a relative URI pointing at a
+  file excluded from the built package. Both READMEs now link to the GitHub copy,
+  which resolves from the tarball and from the repository.
+
+* The check time was 11 minutes. Profiling the workflow showed that 87% of a
+  `run_workflow()` call was spent inside `kernelshap()`: the number of explained
+  rows and the background sample were fixed at `explain_shap()`'s defaults (100
+  and 100). Both are now part of the specification, default to 40 and 40, and can
+  be raised with `set_explain(n_explain = , bg_n = )`. The same workflow now takes
+  about 30 seconds instead of 90, and `R CMD check` finishes well inside the
+  ten-minute budget. This is a genuine defect in the package, not only a shortcut
+  for CRAN: a default that spends a minute of a user's time on an explanation
+  nobody asked for is the wrong default. SHAP can be switched off entirely with
+  `set_explain(spec, model = "none")`.
+
+* No other changes were made: the package API, the statistics, and the test suite
+  are unchanged (205 testthat cases, 0 failures).
+
 ## R CMD check results
 
 0 errors | 0 warnings | 0 notes
@@ -15,7 +42,7 @@ There are currently no downstream dependencies for this package.
 
 ## Notes
 
-* This is the first CRAN release of `uniml` (0.5.0).
+* This is the first CRAN release of `uniml` (0.5.1).
 
 * Every package in `Imports` and `Suggests` is available on CRAN. An earlier
   development version suggested `mlr3extralearners`, which is not on CRAN; that

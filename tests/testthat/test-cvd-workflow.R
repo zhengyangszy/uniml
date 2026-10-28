@@ -16,6 +16,12 @@ read_cvd_workflow_example <- function(file_name) {
 
 test_that("run_workflow() trains and ranks the cardiovascular example", {
   skip_if_not_installed("rpart")
+  # This is the end-to-end run on the largest shipped cohort and the slowest test
+  # in the suite by far. Everything it covers - assembly, ranking, selection,
+  # prediction - is also covered on small synthetic data in test-workflow.R, which
+  # does run on CRAN; this one runs on every commit in CI instead, so the CRAN
+  # check stays inside its ten-minute budget.
+  skip_on_cran()
 
   development <- read_cvd_workflow_example("uniml-cvd-mortality.csv")
   new_admissions <- read_cvd_workflow_example(

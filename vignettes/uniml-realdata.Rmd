@@ -117,7 +117,7 @@ result <- suppressWarnings(run_workflow(
   spec,
   train = split$train$data,
   validation = split$validation$data,
-  ci_R = 200
+  ci_R = 40
 ))
 result
 ```

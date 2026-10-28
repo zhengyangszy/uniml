@@ -69,6 +69,10 @@ spec <- set_evaluation(
   calibration = "platt",
   select_on = "validation"
 )
+# Kernel SHAP is the most expensive step of a workflow, so its two size knobs are
+# part of the specification. They are small here to keep the vignette quick; a
+# paper-quality explanation wants a few hundred rows on both sides.
+spec <- set_explain(spec, n_explain = 20, bg_n = 20)
 spec
 ```
 
@@ -116,7 +120,7 @@ result <- run_workflow(
   validation = split$validation$data,
   test = new_admissions[1:200, ],
   external = new_admissions[201:400, ],
-  ci_R = 100
+  ci_R = 25
 )
 
 result
@@ -228,7 +232,7 @@ SHAP explanations use `kernelshap`; the number of explained rows and the
 background sample are controlled by `n_explain` and `bg_n`:
 
 ```{r shap, fig.cap = "Global SHAP importance of the best model."}
-explained <- explain_shap(result, model = "best", n_explain = 80, bg_n = 50)
+explained <- explain_shap(result, model = "best", n_explain = 30, bg_n = 20)
 plot_shap_importance(explained)
 ```
 

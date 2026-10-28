@@ -81,8 +81,8 @@ the run time stays predictable.
 explained <- explain_shap(
   result,
   model = "best",
-  n_explain = 60,
-  bg_n = 40,
+  n_explain = 30,
+  bg_n = 18,
   seed = 123
 )
 
@@ -99,8 +99,8 @@ explanation <- explain_shap(
   data = result$preprocess$train[, setdiff(
     names(result$preprocess$train), "died"
   )],
-  n_explain = 40,
-  bg_n = 30,
+  n_explain = 20,
+  bg_n = 14,
   seed = 123,
   positive = "yes"
 )

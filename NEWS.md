@@ -1,3 +1,45 @@
+# uniml 0.5.1
+
+The CRAN pre-test for 0.5.0 asked for three things, and profiling to fix the third
+one found a real performance defect.
+
+## Kernel SHAP no longer dominates the run time
+
+* `.workflow_shap()` spent **87% of a `run_workflow()` call** inside
+  `kernelshap()`, with the sizes fixed at `explain_shap()`'s defaults (100 rows
+  explained against a 100-row background). A complete report therefore took about
+  a minute on a 800-patient cohort, almost all of it in one explanation.
+
+* `n_explain` and `bg_n` are now part of the specification:
+  `uniml_spec()$explain` defaults to 40 and 40, and
+  `set_explain(spec, n_explain = , bg_n = )` changes them. The same workflow now
+  takes about 30 seconds instead of 90, and a paper-quality explanation is one
+  argument away. `set_explain(spec, model = "none")` skips SHAP entirely.
+
+* Measured on the cardiovascular example (2 learners, 3 data sets):
+  87 s → 29 s.
+
+## CRAN pre-test fixes
+
+* `inst/WORDLIST` declares "SHAP", "interpretability", and "multiclass", which the
+  incoming spell check flagged in `DESCRIPTION`.
+
+* The bilingual link at the top of `README.md` pointed at `README.zh.md`, which is
+  excluded from the built package, so the relative URI was broken inside the
+  tarball. Both READMEs now link to the GitHub copy, which resolves everywhere.
+
+* Vignettes run smaller bootstrap and SHAP samples (`ci_R` 100/200 → 25/40, and
+  20 to 30 explained rows against a 14 to 20 row background), so `R CMD check`
+  finishes inside CRAN's ten-minute budget. Every vignette still runs the whole
+  workflow; none of them is `eval = FALSE` and none of the numbers is typed in by
+  hand.
+
+* The end-to-end run on the largest shipped cohort (`test-cvd-workflow.R`, by far
+  the slowest test) is marked `skip_on_cran()`. It covers assembly, ranking,
+  selection, and prediction, all of which `test-workflow.R` covers on small
+  synthetic data that does run on CRAN, and it runs on three platforms in CI on
+  every commit.
+
 # uniml 0.5.0
 
 Recalibration for multiclass models, which 0.4.0 could measure but not fix.

@@ -240,6 +240,12 @@
     explain = list(
       model = "best",
       plots = c("importance", "beeswarm", "dependence", "waterfall"),
+      # Small on purpose: Kernel SHAP is by far the most expensive step of a
+      # workflow, so the default is an explanation that costs a couple of seconds
+      # rather than a minute. `set_explain()` raises both when a paper-quality
+      # explanation is needed.
+      n_explain = 40L,
+      bg_n = 40L,
       thresholds = NULL
     ),
     output = list(
@@ -590,6 +596,17 @@ validate_uniml_spec <- function(x) {
   .assert_character_vector(x$explain$plots, "explain$plots",
                            choices = c("importance", "beeswarm", "dependence",
                                        "waterfall", "force"))
+  # Kernel SHAP dominates the run time of a workflow (one partition per explained
+  # row and per coalition), so its two size knobs are part of the specification
+  # rather than left at `explain_shap()`'s defaults.
+  if (!is.null(x$explain$n_explain)) {
+    .assert_scalar_number(x$explain$n_explain, "explain$n_explain",
+                          integer = TRUE, min = 1)
+  }
+  if (!is.null(x$explain$bg_n)) {
+    .assert_scalar_number(x$explain$bg_n, "explain$bg_n",
+                          integer = TRUE, min = 2)
+  }
   if (!is.null(x$explain$thresholds)) {
     settings <- x$explain$thresholds
     .assert_named_list(settings, "explain$thresholds")
@@ -1582,9 +1599,14 @@ set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
 #' Set explanation options
 #'
 #' @param spec A `uniml_spec` object.
-#' @param model Model to explain.
+#' @param model Model to explain. `"none"` skips SHAP entirely, which is the way
+#'   to keep a workflow fast when no explanation is needed.
 #' @param plots SHAP plots to produce: any of `"importance"`, `"beeswarm"`,
 #'   `"dependence"`, `"waterfall"`, and `"force"`.
+#' @param n_explain Number of rows to explain. Kernel SHAP costs roughly one
+#'   prediction pass per explained row, so this is the first knob to turn when a
+#'   workflow feels slow.
+#' @param bg_n Size of the background sample Kernel SHAP averages over.
 #' @param thresholds Optional list configuring SHAP zero-crossing thresholds:
 #'   `targets` (character vector), `interaction`, `min_n`, `min_unique`, `span`.
 #' @param ... Additional explanation fields.
@@ -1598,6 +1620,7 @@ set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
 set_explain <- function(spec, model = "best",
                         plots = c("importance", "beeswarm", "dependence",
                                   "waterfall"),
+                        n_explain = NULL, bg_n = NULL,
                         thresholds = NULL, ...) {
   .validate_spec_object(spec)
   spec$explain <- .merge_named_list(
@@ -1605,6 +1628,8 @@ set_explain <- function(spec, model = "best",
     list(
       model = model,
       plots = plots,
+      n_explain = n_explain,
+      bg_n = bg_n,
       thresholds = thresholds
     )
   )

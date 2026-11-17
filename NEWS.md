@@ -1,3 +1,36 @@
+# uniml 0.5.2
+
+Two reporting improvements suggested while using the package end to end. No
+estimation procedure changed.
+
+## SHAP figures report variables, not one-hot columns
+
+* Kernel SHAP explains the encoded columns the model was trained on, so a
+  factor variable appeared once per dummy column (`sex_female`, `sex_male`),
+  and with full-level encoding the redundant pair could split one effect in
+  half. The beeswarm, importance, dependence, and waterfall figures now sum
+  the one-hot columns of each variable back to that variable — the standard
+  remedy used by the Python shap ecosystem and by published SHAP figures.
+
+* Numeric feature values are shown on their original scale (the scaling
+  parameters are inverted), categorical levels label the dependence axes,
+  and the additive baseline is carried over so that
+  `sum(SHAP) + baseline == prediction` (pinned by a test).
+
+* The aggregation is automatic in `run_workflow()` and
+  `explain_shap(<uniml_result>)`; `aggregate_shap_variables(shapviz,
+  preprocessor)` is exported for hand-built explanations, and
+  `unimlsurv::surv_shap()` uses it with a graceful fallback to per-column
+  explanations against older `uniml` versions.
+
+## Decision-curve figures clip the y axis
+
+* The treat-all net benefit dives to large negative values as the threshold
+  probability approaches 1, which flattened the informative region of every
+  `plot_dca()` figure. The y axis is now clipped to
+  `c(-min(0.05, ymax), ymax)` — the convention used by published decision
+  curves. The underlying `dca_curve.csv` data are unchanged.
+
 # uniml 0.5.1
 
 The CRAN pre-test for 0.5.0 asked for three things, and profiling to fix the third

@@ -1046,6 +1046,15 @@ plot_dca.uniml_result <- function(x, palette = "bmj", theme = theme_uniml(),
     .uniml_scale_color(values = values) +
     ggplot2::scale_linetype_discrete() +
     theme_uniml()
+  # Treat-all net benefit dives to minus infinity as the threshold approaches
+  # 1, which would crush the informative region into a sliver. Published
+  # decision curves clip the y axis to a small negative band instead of
+  # showing the whole dive; the data keep everything, only the view changes.
+  net_benefit <- curve$net_benefit[is.finite(curve$net_benefit)]
+  ymax <- if (length(net_benefit)) max(net_benefit) else NA_real_
+  if (is.finite(ymax) && ymax > 0) {
+    plot <- plot + ggplot2::coord_cartesian(ylim = c(-min(0.05, ymax), ymax))
+  }
   .uniml_style_plot(plot, theme, title, subtitle, caption)
 }
 

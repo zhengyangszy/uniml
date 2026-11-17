@@ -137,6 +137,23 @@
   names(scores)[which.max(scores)]
 }
 
+# Aggregated categorical variables carry their levels as an attribute on the
+# code column; use them as axis labels instead of raw 0/1/2 codes.
+.shap_level_scale <- function(object, feature) {
+  X <- tryCatch(shapviz::get_feature_values(object), error = function(e) NULL)
+  if (is.null(X) || !feature %in% names(X)) {
+    return(NULL)
+  }
+  levels <- attr(X[[feature]], "levels")
+  if (is.null(levels) || length(levels) < 2L) {
+    return(NULL)
+  }
+  ggplot2::scale_x_continuous(
+    breaks = seq_along(levels) - 1L,
+    labels = levels
+  )
+}
+
 .require_shapviz <- function() {
   if (!.shap_available()) {
     .abort("Package \"shapviz\" is required for SHAP plots.")
@@ -371,6 +388,7 @@ plot_shap_dependence.uniml_result <- function(x, feature = NULL, model = "best",
     plot <- shapviz::sv_dependence(
       objects, v = feature, color = color_by, ...
     )
+    plot <- plot + .shap_level_scale(objects, feature)
     return(.uniml_style_plot(plot, theme, title, subtitle, caption))
   }
   picked <- .shap_pick(objects, model = model)
@@ -382,6 +400,7 @@ plot_shap_dependence.uniml_result <- function(x, feature = NULL, model = "best",
     plot <- shapviz::sv_dependence(
       picked, v = feature, color = color_by, ...
     )
+    plot <- plot + .shap_level_scale(picked, feature)
     return(.uniml_style_plot(plot, theme, title, subtitle, caption))
   }
   features <- .shap_feature_names(objects[[1L]])

@@ -1785,9 +1785,10 @@
     return(NULL)
   }
   tryCatch(
-    explain_shap(
+    .explain_shap_uniml_binary(
       learners,
       data = .workflow_shap_data(result),
+      preprocessor = result$preprocess,
       seed = as.integer(spec$seed),
       positive = spec$positive,
       n_explain = spec$explain$n_explain %||% 40L,

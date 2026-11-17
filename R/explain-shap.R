@@ -279,6 +279,178 @@
   as.data.frame(values, stringsAsFactors = FALSE, check.names = FALSE)
 }
 
+# --- One-hot aggregation -----------------------------------------------------
+#
+# Kernel SHAP explains the encoded columns the model was trained on, so a
+# factor variable shows up once per dummy column (`sex_female`, `sex_male`),
+# and with full-level encoding the pair of redundant columns even splits one
+# effect in half. Published SHAP figures report variables, not dummy columns;
+# the standard remedy is to sum the SHAP values of every encoded column back
+# to its source variable and to report feature values in that space.
+
+.shap_encode_config <- function(preprocessor) {
+  if (is.null(preprocessor) || !is.list(preprocessor$steps)) {
+    return(NULL)
+  }
+  encode <- preprocessor$steps$encode
+  if (is.null(encode) || identical(encode$method, "none")) {
+    return(NULL)
+  }
+  levels <- encode$params$levels
+  if (!is.list(levels) || length(levels) == 0L) {
+    return(NULL)
+  }
+  scale <- preprocessor$steps$scale
+  differences <- if (!is.null(scale) && is.list(scale$params)) {
+    scale$params$differences
+  } else {
+    NULL
+  }
+  list(
+    levels = levels,
+    dropped = if (is.list(encode$params$dropped)) {
+      encode$params$dropped
+    } else {
+      list()
+    },
+    method = encode$method,
+    scale = if (is.list(differences)) differences else list()
+  )
+}
+
+# Level codes for one aggregated categorical variable: the level whose dummy
+# is 1; all-zero rows decode to the dropped reference level of `onehot_drop`,
+# or stay NA when the row's level has no column in the model.
+.shap_decode_level_codes <- function(X, columns, variable, config) {
+  levels <- config$levels[[variable]]
+  encoded_columns <- paste0(variable, "_", levels)
+  present <- encoded_columns[encoded_columns %in% columns]
+  if (length(present) == 0L) {
+    return(NULL)
+  }
+  dummy <- as.matrix(X[, present, drop = FALSE])
+  storage.mode(dummy) <- "double"
+  active <- dummy > 0.5
+  hits <- rowSums(active)
+  codes <- rep(NA_real_, nrow(dummy))
+  single <- hits == 1L
+  if (any(single)) {
+    index <- max.col(dummy[single, , drop = FALSE], ties.method = "first")
+    codes[single] <- match(present[index], encoded_columns) - 1L
+  }
+  zero <- hits == 0L
+  if (any(zero) && identical(config$method, "onehot_drop") &&
+      !is.null(config$dropped[[variable]])) {
+    codes[zero] <- match(config$dropped[[variable]], levels) - 1L
+  }
+  codes
+}
+
+# Sum the SHAP matrix by source variable and rebuild both feature-value
+# frames in that space. Numeric variables keep their encoded column on the
+# std side and are unscaled on the raw side; categorical variables get a
+# 0-based level code on both sides, with the levels attached as an attribute
+# so plots can relabel the axis.
+.shap_aggregate_pair <- function(S, X_std, X_raw, columns, config,
+                                 baseline = 0) {
+  var_of <- rep(NA_character_, length(columns))
+  for (variable in names(config$levels)) {
+    hit <- columns %in% paste0(variable, "_", config$levels[[variable]])
+    var_of[hit] <- variable
+  }
+  var_of[is.na(var_of)] <- columns[is.na(var_of)]
+  variables <- unique(var_of)
+  S_agg <- do.call(cbind, lapply(variables, function(v) {
+    rowSums(S[, columns[var_of == v], drop = FALSE])
+  }))
+  storage.mode(S_agg) <- "double"
+  colnames(S_agg) <- variables
+  build <- function(frame) {
+    out <- data.frame(row.names = seq_len(nrow(frame)))
+    for (variable in variables) {
+      cols_v <- columns[var_of == variable]
+      if (variable %in% names(config$levels)) {
+        codes <- .shap_decode_level_codes(frame, columns, variable, config)
+        out[[variable]] <- codes
+        attr(out[[variable]], "levels") <- config$levels[[variable]]
+      } else {
+        out[[variable]] <- frame[[cols_v[[1L]]]]
+      }
+    }
+    out
+  }
+  X_std_agg <- build(X_std)
+  X_raw_agg <- build(X_raw)
+  for (variable in setdiff(variables, names(config$levels))) {
+    difference <- config$scale[[variable]]
+    if (!is.null(difference)) {
+      X_raw_agg[[variable]] <- X_raw_agg[[variable]] * difference$scale +
+        difference$center
+    }
+  }
+  # The SHAP values are unchanged by the aggregation, so the additive
+  # baseline must be carried over: a rebuilt `shapviz.matrix` would otherwise
+  # default to 0 and break `sum(SHAP) + baseline == prediction`.
+  list(
+    std = shapviz::shapviz(S_agg, X = X_std_agg, baseline = baseline),
+    raw = shapviz::shapviz(S_agg, X = X_raw_agg, baseline = baseline)
+  )
+}
+
+#' Aggregate one-hot SHAP columns back to their original variables
+#'
+#' Kernel SHAP explains the encoded feature columns the model was trained on,
+#' so a factor variable appears once per dummy column (`sex_female`,
+#' `sex_male`), and with full-level encoding the redundant pair even splits one
+#' effect across two rows. Published SHAP figures report variables, not dummy
+#' columns: this function sums the SHAP values of every encoded column back to
+#' its source variable and rebuilds the feature values in that space. Numeric
+#' variables are unscaled when scaling parameters are available; categorical
+#' variables get a 0-based level code, with the levels attached as an attribute
+#' so that `plot_shap_dependence()` can relabel the axis.
+#'
+#' @param x A `shapviz` or `mshapviz` object whose columns come from the
+#'   encoding of `preprocessor`.
+#' @param preprocessor A fitted preprocessor as stored in `result$preprocess`,
+#'   or `NULL` to return `x` unchanged.
+#'
+#' @return A `shapviz`/`mshapviz` object with one column per original variable.
+#' @export
+#' @examples
+#' \dontrun{
+#' explained <- explain_shap(result, model = "best")
+#' plot_shap_beeswarm(aggregate_shap_variables(
+#'   explained$objects, result$preprocess
+#' ))
+#' }
+aggregate_shap_variables <- function(x, preprocessor) {
+  if (!inherits(x, c("shapviz", "mshapviz"))) {
+    .abort("`x` must be a `shapviz` or `mshapviz` object.")
+  }
+  .shap_require_packages()
+  config <- .shap_encode_config(preprocessor)
+  if (is.null(config)) {
+    return(x)
+  }
+  if (inherits(x, "mshapviz")) {
+    parts <- lapply(x, function(part) {
+      S <- .shap_object_matrix(part)
+      X <- .shap_object_features(part)
+      .shap_aggregate_pair(
+        S, X, X, colnames(S), config,
+        baseline = shapviz::get_baseline(part)
+      )$raw
+    })
+    return(shapviz::mshapviz(parts))
+  }
+  S <- .shap_object_matrix(x)
+  X <- .shap_object_features(x)
+  .shap_aggregate_pair(
+    S, X, X, colnames(S), config,
+    baseline = shapviz::get_baseline(x)
+  )$raw
+}
+
 .shap_rows_by_model <- function(items, matrix_fun, model_names) {
   rows <- lapply(seq_along(items), function(index) {
     item <- items[[index]]
@@ -371,12 +543,14 @@
                                        feature_names = NULL, n_explain = 100L,
                                        bg_n = 100L, seed = 123L,
                                        positive = NULL,
-                                       parallel = FALSE, ...) {
+                                       parallel = FALSE, preprocessor = NULL,
+                                       ...) {
   .shap_require_packages()
   .assert_scalar_number(n_explain, "n_explain", integer = TRUE, min = 1)
   .assert_scalar_number(bg_n, "bg_n", integer = TRUE, min = 1)
   .assert_scalar_number(seed, "seed", integer = TRUE)
   .assert_scalar_logical(parallel, "parallel")
+  encode_config <- .shap_encode_config(preprocessor)
 
   records <- .shap_model_records(x)
   bundle <- .shap_data_bundle(
@@ -436,7 +610,19 @@
         }
         values <- .shap_object_matrix(native)
         raw_object <- shapviz::shapviz(values, X = model_raw_data)
-        list(std = native, raw = raw_object)
+        pair <- if (is.null(encode_config)) {
+          list(std = native, raw = raw_object)
+        } else {
+          .shap_aggregate_pair(
+            S = values,
+            X_std = model_data,
+            X_raw = model_raw_data,
+            columns = colnames(values),
+            config = encode_config,
+            baseline = shapviz::get_baseline(native)
+          )
+        }
+        list(std = pair$std, raw = pair$raw)
       },
       error = function(e) e
     )
@@ -584,7 +770,7 @@ explain_shap.uniml_result <- function(x, data = NULL, raw_data = NULL,
     }
     x$models <- x$models[selected]
   }
-  out <- explain_shap.Learner(
+  out <- .explain_shap_uniml_binary(
     x,
     data = data,
     raw_data = raw_data,
@@ -594,7 +780,7 @@ explain_shap.uniml_result <- function(x, data = NULL, raw_data = NULL,
     seed = seed,
     positive = positive,
     parallel = parallel,
-    task_type = task_type,
+    preprocessor = x$preprocess,
     ...
   )
   x$shap <- out

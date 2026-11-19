@@ -19,6 +19,7 @@ set_evaluation(
   dca = TRUE,
   select_on = "validation",
   resampling = NULL,
+  stratify = NULL,
   ...
 )
 }
@@ -53,6 +54,11 @@ set_evaluation(
 \item{resampling}{Outer resampling scheme: \code{"cv"} (default) or \code{"bootstrap"}
 (out-of-bag scoring; \code{folds} is reinterpreted as the number of bootstrap
 repetitions).}
+
+\item{stratify}{Whether to balance the outcome classes across the resampling
+folds (stratified sampling). The helper column that carries the class
+codes never becomes a model feature. Folds are left unstratified — with a
+message — when a class has fewer rows than there are folds.}
 
 \item{...}{Additional evaluation fields.}
 }

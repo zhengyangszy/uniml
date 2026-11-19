@@ -50,5 +50,5 @@ doi:10.1002/sim.2929
 
 Pencina MJ, D'Agostino RB Sr, Steyerberg EW (2011). Extensions of net
 reclassification improvement calculations to measure usefulness of new
-biomarkers. \emph{Statistics in Medicine}, 30(1), 11-21. doi:10.1002/sim.4067
+biomarkers. \emph{Statistics in Medicine}, 30(1), 11-21. doi:10.1002/sim.4085
 }

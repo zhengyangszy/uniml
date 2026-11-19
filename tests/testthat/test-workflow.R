@@ -264,6 +264,51 @@ test_that("SHAP model and plot selection follow explain settings", {
   expect_identical(names(.workflow_plots(result, single)), "importance")
 })
 
+test_that("stratified folds balance the outcome across resampling", {
+  skip_if_not_installed("rpart")
+  set.seed(31)
+  data <- data.frame(
+    y = factor(rep(c("no", "yes"), c(80, 20))),
+    x1 = stats::rnorm(100)
+  )
+  spec <- uniml_spec(task_type = "binary", outcome = "y", positive = "yes")
+  spec <- set_learners(spec, "cart", tune = FALSE)
+  spec <- set_evaluation(
+    spec,
+    stratify = TRUE,
+    ci = "none",
+    calibration = "none",
+    tests = character(),
+    dca = FALSE
+  )
+  spec <- set_explain(spec, model = "none", plots = character())
+
+  task <- make_task(data, spec)
+  expect_length(task$strata, 2L)
+  # The strata helper column never becomes a model feature.
+  expect_false(".uniml_stratum" %in% task$feature_names)
+
+  resampling <- .workflow_folds(data, spec)
+  rates <- vapply(seq_len(resampling$iters), function(i) {
+    mean(task$truth()[resampling$test_set(i)] == "yes")
+  }, numeric(1))
+  expect_true(max(rates) - min(rates) <= 0.02)
+
+  # Without the switch the folds stay unstratified (previous behaviour).
+  spec_plain <- uniml_spec(task_type = "binary", outcome = "y", positive = "yes")
+  spec_plain <- set_learners(spec_plain, "cart", tune = FALSE)
+  task_plain <- make_task(data, spec_plain)
+  expect_length(task_plain$strata, 0L)
+
+  # A class smaller than the fold count degrades gracefully with a message.
+  tiny <- data[c(1:10, 81:82), ]
+  expect_message(
+    strata_task <- make_task(tiny, spec),
+    "unstratified"
+  )
+  expect_length(strata_task$strata, 0L)
+})
+
 test_that("workflow skips SHAP when explain is disabled", {
   skip_if_not_installed("rpart")
   data <- make_workflow_data()

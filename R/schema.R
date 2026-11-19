@@ -236,7 +236,8 @@
       calibration_args = list(folds = 5L, bins = 10L, fit = "out_of_fold"),
       tests = c("delong", "hl"),
       dca = TRUE,
-      select_on = "validation"
+      select_on = "validation",
+      stratify = FALSE
     ),
     explain = list(
       model = "best",
@@ -554,6 +555,9 @@ validate_uniml_spec <- function(x) {
 
   .assert_character_vector(x$evaluation$metrics, "evaluation$metrics")
   .assert_choice(x$evaluation$ci, "evaluation$ci", c("bootstrap", "none"))
+  if (!is.null(x$evaluation$stratify)) {
+    .assert_scalar_logical(x$evaluation$stratify, "evaluation$stratify")
+  }
   # A binary outcome is recalibrated one-vs-none; a multinomial one needs a single
   # scalar applied to every class at once. The two sets are deliberately disjoint,
   # so a specification cannot ask for a method the task type does not have.
@@ -1553,6 +1557,10 @@ set_tuning <- function(spec, tuner = "random_search", folds = 5, repeats = 1,
 #' @param resampling Outer resampling scheme: `"cv"` (default) or `"bootstrap"`
 #'   (out-of-bag scoring; `folds` is reinterpreted as the number of bootstrap
 #'   repetitions).
+#' @param stratify Whether to balance the outcome classes across the resampling
+#'   folds (stratified sampling). The helper column that carries the class
+#'   codes never becomes a model feature. Folds are left unstratified — with a
+#'   message — when a class has fewer rows than there are folds.
 #' @param ... Additional evaluation fields.
 #'
 #' @return Updated `uniml_spec`.
@@ -1572,7 +1580,7 @@ set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
                            best_model = "composite", calibration = "none",
                            calibration_args = NULL, tests = c("delong", "hl"),
                            dca = TRUE, select_on = "validation",
-                           resampling = NULL, ...) {
+                           resampling = NULL, stratify = NULL, ...) {
   .validate_spec_object(spec)
   .assert_step_args(
     calibration_args,
@@ -1603,7 +1611,8 @@ set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
     tests = tests,
     dca = dca,
     select_on = select_on,
-    resampling = resampling
+    resampling = resampling,
+    stratify = stratify
   )
   values <- values[!vapply(values, is.null, logical(1))]
   spec$evaluation <- .merge_named_list(spec$evaluation, values)

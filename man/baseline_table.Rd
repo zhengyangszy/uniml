@@ -42,8 +42,8 @@ result$meta$baseline
 }
 \references{
 Austin PC (2009). Balance diagnostics for comparing the distribution of
-baseline covariates in smoking cessation using propensity scores.
-\emph{Statistics in Medicine}, 28(28), 3083-3107. doi:10.1002/sim.3697
+baseline covariates between treatment groups in propensity-score matched
+samples. \emph{Statistics in Medicine}, 28(25), 3083-3107. doi:10.1002/sim.3697
 
 Collins GS, Moons KGM, Dhiman P, et al. (2024). TRIPOD+AI statement. \emph{BMJ},
 385, e078378. doi:10.1136/bmj-2023-078378

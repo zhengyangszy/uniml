@@ -602,7 +602,7 @@ make_task <- function(data, spec) {
     if (!identical(observed_positive, expected_positive)) {
       .abort("`spec$positive` does not match the positive class in `task`.")
     }
-    return(task)
+    return(.stratify_task(task, spec, folds = spec$tuning$folds))
   }
 
   if (inherits(data, "uniml_data")) {
@@ -644,6 +644,7 @@ make_task <- function(data, spec) {
     # mlr3 treat the outcome as binary.
     positive = if (is.null(spec$positive)) NULL else as.character(spec$positive)
   )
+  task <- .stratify_task(task, spec, folds = spec$tuning$folds)
   task$id <- "uniml_task"
   task
 }

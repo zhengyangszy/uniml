@@ -322,7 +322,7 @@ delong_test <- function(pred_list, labels, positive = NULL) {
 #' @references
 #' Hosmer DW, Lemeshow S (1980). A goodness-of-fit test for the multiple
 #' logistic regression model. *Communications in Statistics - Theory and
-#' Methods*, 10, 1043-1069. doi:10.1080/03610928008827941
+#' Methods*, A9(10), 1043-1069. doi:10.1080/03610928008827941
 #' @export
 #' @examples
 #' set.seed(1)

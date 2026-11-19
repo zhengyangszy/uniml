@@ -260,7 +260,7 @@ calc_metrics.default <- function(x, ...) {
 #'
 #' Zadrozny B, Elkan C (2002). Transforming classifier scores into accurate
 #' multiclass probability estimates. *Proceedings of the 8th ACM SIGKDD*,
-#' 694-699. doi:10.1145/775047.775109
+#' 694-699. doi:10.1145/775047.775151
 #'
 #' Niculescu-Mizil A, Caruana R (2005). Predicting good probabilities with
 #' supervised learning. *Proceedings of the 22nd ICML*, 625-632.

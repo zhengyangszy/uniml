@@ -1315,6 +1315,41 @@
   out
 }
 
+# `set_evaluation(stratify = TRUE)` balances the outcome classes across the
+# resampling folds — the tutorial's stratified sampling. mlr3 (>= 1.0) only
+# accepts numeric strata columns, so a hidden numeric helper column carries
+# the 0-based class codes; it is kept out of the feature roles and therefore
+# never reaches a model.
+.stratify_task <- function(task, spec, folds = 5L) {
+  if (!isTRUE(spec$evaluation$stratify)) {
+    return(task)
+  }
+  if (length(task$strata) > 0L) {
+    return(task)
+  }
+  truth <- task$truth()
+  counts <- table(truth)
+  if (length(counts) < 2L) {
+    return(task)
+  }
+  needed <- max(2L, as.integer(folds))
+  if (min(counts) < needed) {
+    message(sprintf(
+      paste0(
+        "Stratified folds requested, but the smallest class (%s) has %d rows ",
+        "(< %d folds); the folds are left unstratified."
+      ),
+      names(counts)[[which.min(counts)]], as.integer(min(counts)), needed
+    ))
+    return(task)
+  }
+  helper <- ".uniml_stratum"
+  task$cbind(data.frame(.uniml_stratum = as.integer(truth) - 1L))
+  task$add_strata(helper)
+  task$col_roles$feature <- setdiff(task$col_roles$feature, helper)
+  task
+}
+
 .workflow_folds <- function(data, spec) {
   folds <- max(2L, as.integer(spec$tuning$folds))
   repeats <- max(1L, as.integer(spec$tuning$repeats))
@@ -1330,11 +1365,12 @@
     mlr3::rsmp("cv", folds = folds)
   }
   set.seed(as.integer(spec$seed))
-  resampling$instantiate(mlr3::as_task_classif(
+  fold_task <- mlr3::as_task_classif(
     data,
     target = spec$outcome,
     positive = spec$positive
-  ))
+  )
+  resampling$instantiate(.stratify_task(fold_task, spec, folds = folds))
   resampling
 }
 

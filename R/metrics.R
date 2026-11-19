@@ -691,7 +691,7 @@ find_threshold <- function(probs, labels, method = c("youden", "cost", "fixed"),
 #'
 #' Pencina MJ, D'Agostino RB Sr, Steyerberg EW (2011). Extensions of net
 #' reclassification improvement calculations to measure usefulness of new
-#' biomarkers. *Statistics in Medicine*, 30(1), 11-21. doi:10.1002/sim.4067
+#' biomarkers. *Statistics in Medicine*, 30(1), 11-21. doi:10.1002/sim.4085
 #' @export
 #' @examples
 #' calc_nri_idi(

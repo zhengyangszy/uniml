@@ -107,6 +107,18 @@ unless a new feature says so.
   `unimlsurv::surv_shap()` uses it with a graceful fallback to per-column
   explanations against older `uniml` versions.
 
+## Stratified resampling folds
+
+* New `set_evaluation(stratify = TRUE)` balances the outcome classes across
+  the cross-validation folds — the stratified sampling the mlr3 tutorial
+  recommends for imbalanced outcomes. It applies to the outer evaluation
+  folds and to the tuning folds; bootstrap draws are stratified as well.
+  A hidden numeric helper column carries the class codes for mlr3 (>= 1.0)'s
+  stratification API and never becomes a model feature. Folds are left
+  unstratified — with a message — when a class has fewer rows than there are
+  folds. The default stays unstratified, so existing results reproduce
+  exactly.
+
 ## SHAP axes show the patient's own values
 
 * The workflow now keeps the original (unprocessed) training data aside for

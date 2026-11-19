@@ -65,7 +65,8 @@
   task$feature_names
 }
 
-.shap_data_bundle <- function(x, data, raw_data, feature_names) {
+.shap_data_bundle <- function(x, data, raw_data, feature_names,
+                              orig_data = NULL) {
   if (is.null(data) && is.list(x)) {
     # Exact matching: `x$data` would partial-match `x$data_info` on a result.
     data <- x[["data", exact = TRUE]]
@@ -127,7 +128,30 @@
     }
     raw_data <- raw_data[, names(data), drop = FALSE]
   }
-  list(data = data, raw_data = raw_data)
+
+  orig <- NULL
+  if (!is.null(orig_data)) {
+    if (!is.data.frame(orig_data) && !is.matrix(orig_data)) {
+      .abort("`orig_data` must be NULL, a data frame, or a matrix.")
+    }
+    orig_data <- as.data.frame(
+      orig_data,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    if (nrow(orig_data) != nrow(data)) {
+      warning(sprintf(
+        paste0(
+          "`orig_data` has %d rows but `data` has %d; original-unit SHAP ",
+          "display is skipped and preprocessor-based values are used."
+        ),
+        nrow(orig_data), nrow(data)
+      ), call. = FALSE)
+    } else {
+      orig <- orig_data
+    }
+  }
+  list(data = data, raw_data = raw_data, orig = orig)
 }
 
 .shap_row_sample <- function(n, n_explain, seed) {
@@ -348,11 +372,14 @@
 
 # Sum the SHAP matrix by source variable and rebuild both feature-value
 # frames in that space. Numeric variables keep their encoded column on the
-# std side and are unscaled on the raw side; categorical variables get a
-# 0-based level code on both sides, with the levels attached as an attribute
-# so plots can relabel the axis.
+# std side; on the raw side they are taken from `X_orig` (the original
+# unprocessed columns) when available, and otherwise unscaled through the
+# stored scaling differences. Categorical variables get a 0-based level code
+# on both sides, decoded from `X_orig` when available (so imputed or
+# transformed values never leak into the axis), with the levels attached as
+# an attribute so plots can relabel the axis.
 .shap_aggregate_pair <- function(S, X_std, X_raw, columns, config,
-                                 baseline = 0) {
+                                 baseline = 0, X_orig = NULL) {
   var_of <- rep(NA_character_, length(columns))
   for (variable in names(config$levels)) {
     hit <- columns %in% paste0(variable, "_", config$levels[[variable]])
@@ -365,29 +392,55 @@
   }))
   storage.mode(S_agg) <- "double"
   colnames(S_agg) <- variables
-  build <- function(frame) {
+  build <- function(frame, orig = NULL, unscale = FALSE) {
     out <- data.frame(row.names = seq_len(nrow(frame)))
     for (variable in variables) {
       cols_v <- columns[var_of == variable]
       if (variable %in% names(config$levels)) {
-        codes <- .shap_decode_level_codes(frame, columns, variable, config)
+        codes <- NULL
+        if (!is.null(orig) && variable %in% names(orig)) {
+          values <- as.character(orig[[variable]])
+          codes <- match(values, config$levels[[variable]]) - 1L
+        }
+        fallback <- .shap_decode_level_codes(frame, columns, variable, config)
+        if (is.null(codes)) {
+          codes <- fallback
+        } else if (!is.null(fallback)) {
+          codes[is.na(codes)] <- fallback[is.na(codes)]
+        }
+        if (is.null(codes)) {
+          # No original column and no dummy columns to decode (impact
+          # encoding): show the encoded impact score so the variable stays
+          # plottable instead of silently disappearing.
+          codes <- frame[[cols_v[[1L]]]]
+        }
         out[[variable]] <- codes
-        attr(out[[variable]], "levels") <- config$levels[[variable]]
+        # The attribute is deliberately NOT named "levels": a plain numeric
+        # column carrying a `levels` attribute is re-coerced and corrupted by
+        # `rbind.data.frame()` when the per-model frames are combined.
+        attr(out[[variable]], "uniml_levels") <- config$levels[[variable]]
       } else {
-        out[[variable]] <- frame[[cols_v[[1L]]]]
+        value <- NULL
+        if (!is.null(orig) && variable %in% names(orig)) {
+          candidate <- orig[[variable]]
+          if (is.numeric(candidate) || is.logical(candidate)) {
+            value <- candidate
+          }
+        }
+        if (is.null(value)) {
+          value <- frame[[cols_v[[1L]]]]
+          difference <- if (unscale) config$scale[[variable]] else NULL
+          if (!is.null(difference)) {
+            value <- value * difference$scale + difference$center
+          }
+        }
+        out[[variable]] <- value
       }
     }
     out
   }
   X_std_agg <- build(X_std)
-  X_raw_agg <- build(X_raw)
-  for (variable in setdiff(variables, names(config$levels))) {
-    difference <- config$scale[[variable]]
-    if (!is.null(difference)) {
-      X_raw_agg[[variable]] <- X_raw_agg[[variable]] * difference$scale +
-        difference$center
-    }
-  }
+  X_raw_agg <- build(X_raw, orig = X_orig, unscale = TRUE)
   # The SHAP values are unchanged by the aggregation, so the additive
   # baseline must be carried over: a rebuilt `shapviz.matrix` would otherwise
   # default to 0 and break `sum(SHAP) + baseline == prediction`.
@@ -413,6 +466,11 @@
 #'   encoding of `preprocessor`.
 #' @param preprocessor A fitted preprocessor as stored in `result$preprocess`,
 #'   or `NULL` to return `x` unchanged.
+#' @param orig_data Optional data frame of the original, unprocessed variables
+#'   with one row per explained observation in the same order. When supplied,
+#'   the rebuilt feature values are exactly the observed patient values;
+#'   imputation, scaling, encoding, and log transforms are not reflected in the
+#'   display. Rows are matched by position with the explained data.
 #'
 #' @return A `shapviz`/`mshapviz` object with one column per original variable.
 #' @export
@@ -423,7 +481,7 @@
 #'   explained$objects, result$preprocess
 #' ))
 #' }
-aggregate_shap_variables <- function(x, preprocessor) {
+aggregate_shap_variables <- function(x, preprocessor, orig_data = NULL) {
   if (!inherits(x, c("shapviz", "mshapviz"))) {
     .abort("`x` must be a `shapviz` or `mshapviz` object.")
   }
@@ -438,7 +496,8 @@ aggregate_shap_variables <- function(x, preprocessor) {
       X <- .shap_object_features(part)
       .shap_aggregate_pair(
         S, X, X, colnames(S), config,
-        baseline = shapviz::get_baseline(part)
+        baseline = shapviz::get_baseline(part),
+        X_orig = orig_data
       )$raw
     })
     return(shapviz::mshapviz(parts))
@@ -447,7 +506,8 @@ aggregate_shap_variables <- function(x, preprocessor) {
   X <- .shap_object_features(x)
   .shap_aggregate_pair(
     S, X, X, colnames(S), config,
-    baseline = shapviz::get_baseline(x)
+    baseline = shapviz::get_baseline(x),
+    X_orig = orig_data
   )$raw
 }
 
@@ -544,6 +604,7 @@ aggregate_shap_variables <- function(x, preprocessor) {
                                        bg_n = 100L, seed = 123L,
                                        positive = NULL,
                                        parallel = FALSE, preprocessor = NULL,
+                                       orig_data = NULL,
                                        ...) {
   .shap_require_packages()
   .assert_scalar_number(n_explain, "n_explain", integer = TRUE, min = 1)
@@ -557,12 +618,16 @@ aggregate_shap_variables <- function(x, preprocessor) {
     x,
     data = data,
     raw_data = raw_data,
-    feature_names = feature_names
+    feature_names = feature_names,
+    orig_data = orig_data
   )
   rows <- .shap_row_sample(nrow(bundle$data), n_explain, seed)
   if (length(rows) < nrow(bundle$data)) {
     bundle$data <- bundle$data[rows, , drop = FALSE]
     bundle$raw_data <- bundle$raw_data[rows, , drop = FALSE]
+    if (!is.null(bundle$orig)) {
+      bundle$orig <- bundle$orig[rows, , drop = FALSE]
+    }
   }
   model_names <- vapply(records, `[[`, character(1), "name")
   if (anyDuplicated(model_names) > 0L) {
@@ -590,6 +655,7 @@ aggregate_shap_variables <- function(x, preprocessor) {
     }
     model_data <- bundle$data[, model_features, drop = FALSE]
     model_raw_data <- bundle$raw_data[, model_features, drop = FALSE]
+    model_orig_data <- bundle$orig
     result <- tryCatch(
       {
         native <- .shap_native_object(
@@ -609,7 +675,12 @@ aggregate_shap_variables <- function(x, preprocessor) {
           )
         }
         values <- .shap_object_matrix(native)
-        raw_object <- shapviz::shapviz(values, X = model_raw_data)
+        display_data <- model_raw_data
+        if (!is.null(model_orig_data) &&
+            all(model_features %in% names(model_orig_data))) {
+          display_data <- model_orig_data[, model_features, drop = FALSE]
+        }
+        raw_object <- shapviz::shapviz(values, X = display_data)
         pair <- if (is.null(encode_config)) {
           list(std = native, raw = raw_object)
         } else {
@@ -619,7 +690,8 @@ aggregate_shap_variables <- function(x, preprocessor) {
             X_raw = model_raw_data,
             columns = colnames(values),
             config = encode_config,
-            baseline = shapviz::get_baseline(native)
+            baseline = shapviz::get_baseline(native),
+            X_orig = model_orig_data
           )
         }
         list(std = pair$std, raw = pair$raw)
@@ -684,6 +756,11 @@ aggregate_shap_variables <- function(x, preprocessor) {
 #' @rdname explain_shap
 #' @param data Feature data used for SHAP computation.
 #' @param raw_data Optional raw feature data aligned with `data`.
+#' @param orig_data Optional data frame of the original, unprocessed variables,
+#'   one row per row of `data` in the same order. When supplied, the raw SHAP
+#'   track displays the observed patient values: imputation, scaling, encoding,
+#'   and log transforms are not reflected in the display. Ignored with a
+#'   warning when the row count differs from `data`.
 #' @param feature_names Optional feature subset.
 #' @param n_explain Number of rows to explain. Larger values are subsampled with
 #'   `seed`, because the cost of Kernel SHAP grows linearly with the number of
@@ -701,7 +778,8 @@ aggregate_shap_variables <- function(x, preprocessor) {
 explain_shap.Learner <- function(x, data = NULL, raw_data = NULL,
                                  feature_names = NULL, n_explain = 100L,
                                  bg_n = 100L, seed = 123L, positive = NULL,
-                                 parallel = FALSE, task_type = "binary", ...) {
+                                 parallel = FALSE, orig_data = NULL,
+                                 task_type = "binary", ...) {
   .assert_choice(task_type, "task_type", "binary")
   .explain_shap_uniml_binary(
     x,
@@ -713,6 +791,7 @@ explain_shap.Learner <- function(x, data = NULL, raw_data = NULL,
     seed = seed,
     positive = positive,
     parallel = parallel,
+    orig_data = orig_data,
     ...
   )
 }
@@ -722,7 +801,8 @@ explain_shap.Learner <- function(x, data = NULL, raw_data = NULL,
 explain_shap.list <- function(x, data = NULL, raw_data = NULL,
                               feature_names = NULL, n_explain = 100L,
                               bg_n = 100L, seed = 123L, positive = NULL,
-                              parallel = FALSE, task_type = "binary", ...) {
+                              parallel = FALSE, orig_data = NULL,
+                              task_type = "binary", ...) {
   .assert_choice(task_type, "task_type", "binary")
   .explain_shap_uniml_binary(
     x,
@@ -734,6 +814,7 @@ explain_shap.list <- function(x, data = NULL, raw_data = NULL,
     seed = seed,
     positive = positive,
     parallel = parallel,
+    orig_data = orig_data,
     ...
   )
 }
@@ -746,7 +827,7 @@ explain_shap.uniml_result <- function(x, data = NULL, raw_data = NULL,
                                       feature_names = NULL, model = "all",
                                       n_explain = 100L, bg_n = 100L,
                                       seed = 123L, positive = NULL,
-                                      parallel = FALSE,
+                                      parallel = FALSE, orig_data = NULL,
                                       task_type = "binary",
                                       ...) {
   validate_uniml_result(x)
@@ -780,6 +861,7 @@ explain_shap.uniml_result <- function(x, data = NULL, raw_data = NULL,
     seed = seed,
     positive = positive,
     parallel = parallel,
+    orig_data = orig_data,
     preprocessor = x$preprocess,
     ...
   )

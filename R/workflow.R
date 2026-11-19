@@ -1809,8 +1809,12 @@
 }
 
 # SHAP is optional: `explain$model = "none"` disables it, and any failure is
-# downgraded to a warning so the workflow still returns a result.
-.workflow_shap <- function(result, spec) {
+# downgraded to a warning so the workflow still returns a result. The original
+# training data are passed through so the SHAP display can show feature values
+# in the patient's own units; when balancing changed the number of training
+# rows, the frames no longer align row by row and the preprocessor-based
+# display is used instead.
+.workflow_shap <- function(result, spec, data = NULL) {
   mode <- spec$explain$model
   if (is.null(mode) || identical(mode, "none")) {
     return(NULL)
@@ -1819,10 +1823,16 @@
   if (is.null(learners)) {
     return(NULL)
   }
+  train_processed <- .workflow_shap_data(result)
+  orig_data <- NULL
+  if (!is.null(data) && nrow(data) == nrow(train_processed)) {
+    orig_data <- data[, setdiff(names(data), spec$outcome), drop = FALSE]
+  }
   tryCatch(
     .explain_shap_uniml_binary(
       learners,
-      data = .workflow_shap_data(result),
+      data = train_processed,
+      orig_data = orig_data,
       preprocessor = result$preprocess,
       seed = as.integer(spec$seed),
       positive = spec$positive,
@@ -2484,7 +2494,7 @@ run_workflow <- function(spec, train, validation, test = NULL,
     select_on = comparison_set,
     best_model_metric = spec$best_model_metric
   )
-  result["shap"] <- list(.workflow_shap(result, spec))
+  result["shap"] <- list(.workflow_shap(result, spec, train))
   result["thresholds"] <- list(.workflow_shap_thresholds(result, spec, failures))
   result["plots"] <- list(.workflow_plots(result, spec, failures))
   result$meta$failures <- .failure_table(failures)

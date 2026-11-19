@@ -107,6 +107,32 @@ unless a new feature says so.
   `unimlsurv::surv_shap()` uses it with a graceful fallback to per-column
   explanations against older `uniml` versions.
 
+## SHAP axes show the patient's own values
+
+* The workflow now keeps the original (unprocessed) training data aside for
+  the SHAP display: `run_workflow()` passes it to `explain_shap()` and every
+  plot-facing `shapviz` copy (`result$shap$objects_raw`) carries the observed
+  patient values, so log-transformed columns are no longer displayed on the
+  log scale. Scaling, imputation, encoding, and the skewness transform never
+  appear on the plot axes.
+* All SHAP figures (`plot_shap_importance()`, `plot_shap_beeswarm()`,
+  `plot_shap_dependence()`, `plot_shap_waterfall()`, `plot_shap_force()`)
+  prefer that original-unit copy; pass `result$shap$objects` itself to a plot
+  to reproduce the standardized view.
+* Fixed: with `encode = "impact"` the SHAP aggregation aborted
+  ("attempt to set an attribute on NULL") and no explanation was produced at
+  all; the encoded categorical column also could not be decoded back to its
+  original levels. Impact-encoded variables now decode from the original
+  factor and stay plottable.
+* Fixed: a numeric column carrying a `levels` attribute was re-coerced by
+  `rbind.data.frame()` when per-model SHAP frames were combined, corrupting
+  values and emitting "invalid factor level" warnings. The level labels are
+  now stored under a dedicated `uniml_levels` attribute.
+* `explain_shap()` and `aggregate_shap_variables()` accept `orig_data` for
+  hand-built explanations; when the row count does not match `data` (e.g.
+  balancing changed the training rows) the original-unit display is skipped
+  with a warning and the preprocessor-based values are used.
+
 ## Decision-curve figures clip the y axis
 
 * The treat-all net benefit dives to large negative values as the threshold

@@ -75,6 +75,11 @@ Draws a force plot for one row through \code{shapviz::sv_force()}. A stored
 \code{mshapviz} object is drawn one panel per model unless a single \code{model} is
 requested.
 }
+\details{
+Feature values are displayed in their original units: the plots prefer the
+original-unit copy the workflow stores in \code{result$shap$objects_raw}. Pass
+\code{result$shap$objects} itself as \code{x} to display standardized values instead.
+}
 \examples{
 \dontrun{
 plot_shap_force(result)

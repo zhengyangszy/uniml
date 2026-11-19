@@ -30,6 +30,13 @@
         sprintf(" (source class \"%s\")", source_class)
     ))
   }
+  # Published SHAP figures show feature values in their original units, so the
+  # plots prefer the original-unit copy (`result$shap$objects_raw`) whenever
+  # the workflow stored one; pass `result$shap$objects` itself to a plot to
+  # display standardized values instead.
+  if (!is.null(x$shap$objects_raw)) {
+    objects <- x$shap$objects_raw
+  }
   list(objects = objects, class = class(objects))
 }
 
@@ -137,14 +144,16 @@
   names(scores)[which.max(scores)]
 }
 
-# Aggregated categorical variables carry their levels as an attribute on the
-# code column; use them as axis labels instead of raw 0/1/2 codes.
+# Aggregated categorical variables carry their level labels as a
+# `uniml_levels` attribute on the code column; use them as axis labels instead
+# of raw 0/1/2 codes. (The attribute must not be called "levels": data.frame
+# algebra such as `rbind` re-coerces columns that carry one.)
 .shap_level_scale <- function(object, feature) {
   X <- tryCatch(shapviz::get_feature_values(object), error = function(e) NULL)
   if (is.null(X) || !feature %in% names(X)) {
     return(NULL)
   }
-  levels <- attr(X[[feature]], "levels")
+  levels <- attr(X[[feature]], "uniml_levels")
   if (is.null(levels) || length(levels) < 2L) {
     return(NULL)
   }
@@ -166,6 +175,11 @@
 #' Draws a SHAP importance plot through `shapviz::sv_importance()`. A stored
 #' `mshapviz` object is drawn one panel per model unless a single `model` is
 #' requested.
+#'
+#' @details
+#' Feature values are displayed in their original units: the plots prefer the
+#' original-unit copy the workflow stores in `result$shap$objects_raw`. Pass
+#' `result$shap$objects` itself as `x` to display standardized values instead.
 #'
 #' @param x A `uniml_result`, `shapviz`, or `mshapviz` object.
 #' @param model For `mshapviz` results, `"best"`, `"all"`, or a model name.
@@ -263,6 +277,11 @@ plot_shap_importance.mshapviz <- function(x, model = "best", kind = "bar",
 #'
 #' Draws a SHAP beeswarm through `shapviz::sv_importance(kind = "beeswarm")`.
 #'
+#' @details
+#' Feature values are displayed in their original units: the plots prefer the
+#' original-unit copy the workflow stores in `result$shap$objects_raw`. Pass
+#' `result$shap$objects` itself as `x` to display standardized values instead.
+#'
 #' @param x A `uniml_result`, `shapviz`, or `mshapviz` object.
 #' @param model For `mshapviz` results, `"best"`, `"all"`, or a model name.
 #' @param max_display Maximum number of features to display.
@@ -352,6 +371,11 @@ plot_shap_beeswarm.mshapviz <- function(x, model = "best",
 #'
 #' When `feature` is `NULL`, the feature with the largest mean absolute SHAP
 #' value is used.
+#'
+#' @details
+#' Feature values are displayed in their original units: the plots prefer the
+#' original-unit copy the workflow stores in `result$shap$objects_raw`. Pass
+#' `result$shap$objects` itself as `x` to display standardized values instead.
 #'
 #' @param x A `uniml_result`, `shapviz`, or `mshapviz` object.
 #' @param feature Feature to draw on the x-axis; `NULL` picks the most
@@ -468,6 +492,11 @@ plot_shap_dependence.mshapviz <- function(x, feature = NULL, model = "best",
 #' Draws the standard SHAP waterfall for one observation through
 #' `shapviz::sv_waterfall()`.
 #'
+#' @details
+#' Feature values are displayed in their original units: the plots prefer the
+#' original-unit copy the workflow stores in `result$shap$objects_raw`. Pass
+#' `result$shap$objects` itself as `x` to display standardized values instead.
+#'
 #' @param x A `uniml_result`, `shapviz`, or `mshapviz` object.
 #' @param model For `mshapviz` results, `"best"`, `"all"`, or a model name.
 #' @param row_id Observation to explain.
@@ -561,6 +590,11 @@ plot_shap_waterfall.mshapviz <- function(x, model = "best", row_id = 1L,
 #' Draws a force plot for one row through `shapviz::sv_force()`. A stored
 #' `mshapviz` object is drawn one panel per model unless a single `model` is
 #' requested.
+#'
+#' @details
+#' Feature values are displayed in their original units: the plots prefer the
+#' original-unit copy the workflow stores in `result$shap$objects_raw`. Pass
+#' `result$shap$objects` itself as `x` to display standardized values instead.
 #'
 #' @param x A `uniml_result`, `shapviz`, or `mshapviz` object.
 #' @param model For `mshapviz` results, `"best"`, `"all"`, or a model name.

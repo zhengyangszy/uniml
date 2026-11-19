@@ -75,6 +75,11 @@ A \code{ggplot} or \code{patchwork} object.
 When \code{feature} is \code{NULL}, the feature with the largest mean absolute SHAP
 value is used.
 }
+\details{
+Feature values are displayed in their original units: the plots prefer the
+original-unit copy the workflow stores in \code{result$shap$objects_raw}. Pass
+\code{result$shap$objects} itself as \code{x} to display standardized values instead.
+}
 \examples{
 \dontrun{
 plot_shap_dependence(result)

@@ -19,6 +19,7 @@
   seed = 123L,
   positive = NULL,
   parallel = FALSE,
+  orig_data = NULL,
   task_type = "binary",
   ...
 )
@@ -33,6 +34,7 @@
   seed = 123L,
   positive = NULL,
   parallel = FALSE,
+  orig_data = NULL,
   task_type = "binary",
   ...
 )
@@ -48,6 +50,7 @@
   seed = 123L,
   positive = NULL,
   parallel = FALSE,
+  orig_data = NULL,
   task_type = "binary",
   ...
 )
@@ -81,6 +84,12 @@ features.}
 
 \item{parallel}{Whether \code{kernelshap} may loop over rows in parallel with a
 registered \code{future} backend.}
+
+\item{orig_data}{Optional data frame of the original, unprocessed variables,
+one row per row of \code{data} in the same order. When supplied, the raw SHAP
+track displays the observed patient values: imputation, scaling, encoding,
+and log transforms are not reflected in the display. Ignored with a
+warning when the row count differs from \code{data}.}
 
 \item{task_type}{Task type. Only \code{"binary"} is implemented.}
 

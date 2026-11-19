@@ -92,3 +92,104 @@ test_that("explain_shap rejects objects without trained learners", {
     "trained mlr3 learners"
   )
 })
+
+make_encoded_shap_fixture <- function(encode) {
+  set.seed(21)
+  n <- 60
+  train <- data.frame(
+    y = factor(rep(c("no", "yes"), length.out = n)),
+    x1 = seq(10, 50, length.out = n),
+    skewed = exp(stats::rnorm(n, 0, 1.1)),
+    z = factor(sample(c("a", "b", "c"), n, replace = TRUE))
+  )
+  preprocessor <- fit_preprocessor(
+    train,
+    impute = "none",
+    scale = "zscore",
+    encode = encode,
+    transform = "log1p",
+    outcome = "y"
+  )
+  data <- preprocessor$train
+  features <- data[, setdiff(names(data), "y"), drop = FALSE]
+  task <- mlr3::as_task_classif(data, target = "y", positive = "yes")
+  learner <- mlr3::lrn("classif.rpart", predict_type = "prob", model = TRUE)
+  learner$train(task)
+  result <- assemble_result(
+    data_info = list(n = n),
+    preprocess = preprocessor,
+    models = list(rpart = learner)
+  )
+  list(train = train, features = features, result = result)
+}
+
+test_that("SHAP raw track displays the original patient values", {
+  skip_if_not_installed("kernelshap")
+  skip_if_not_installed("shapviz")
+
+  fixture <- make_encoded_shap_fixture("onehot")
+  explained <- explain_shap(
+    fixture$result,
+    data = fixture$features,
+    orig_data = fixture$train[, setdiff(names(fixture$train), "y")],
+    model = "rpart",
+    n_explain = 20,
+    bg_n = 20,
+    seed = 1
+  )
+  expect_s3_class(explained$shap$objects_raw, "shapviz")
+
+  set.seed(1)
+  rows <- sort(sample.int(60L, 20L))
+  raw_values <- shapviz::get_feature_values(explained$shap$objects_raw)
+  # Numeric columns come straight from the original frame: imputation,
+  # scaling, encoding, and the log transform are not reflected.
+  expect_equal(raw_values$x1, fixture$train$x1[rows])
+  expect_equal(raw_values$skewed, fixture$train$skewed[rows])
+  # Categorical levels decode from the original factor.
+  codes <- raw_values$z
+  expect_identical(
+    as.numeric(codes),
+    as.numeric(match(
+      as.character(fixture$train$z[rows]),
+      levels(fixture$train$z)
+    ) - 1L)
+  )
+  expect_identical(attr(codes, "uniml_levels"), levels(fixture$train$z))
+  # The attribute must not be called "levels": data.frame algebra (rbind)
+  # re-coerces such columns and corrupts the values.
+  expect_null(attr(explained$shap$feature_values_raw$z, "levels"))
+})
+
+test_that("impact-encoded categoricals stay plottable in SHAP", {
+  skip_if_not_installed("kernelshap")
+  skip_if_not_installed("shapviz")
+
+  fixture <- make_encoded_shap_fixture("impact")
+  explained <- explain_shap(
+    fixture$result,
+    data = fixture$features,
+    orig_data = fixture$train[, setdiff(names(fixture$train), "y")],
+    model = "rpart",
+    n_explain = 20,
+    bg_n = 20,
+    seed = 2
+  )
+  # Regression guard: impact encoding used to abort the whole aggregation
+  # ("attempt to set an attribute on NULL") and drop the variable.
+  expect_s3_class(explained$shap$objects, "shapviz")
+  expect_true("z" %in% colnames(shapviz::get_shap_values(explained$shap$objects)))
+  expect_true("z" %in% names(shapviz::get_feature_values(explained$shap$objects)))
+
+  set.seed(2)
+  rows <- sort(sample.int(60L, 20L))
+  raw_values <- shapviz::get_feature_values(explained$shap$objects_raw)
+  expect_identical(
+    as.numeric(raw_values$z),
+    as.numeric(match(
+      as.character(fixture$train$z[rows]),
+      levels(fixture$train$z)
+    ) - 1L)
+  )
+  expect_s3_class(plot_shap_dependence(explained, feature = "z"), "ggplot")
+})

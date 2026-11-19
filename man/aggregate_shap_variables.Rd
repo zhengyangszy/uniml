@@ -4,7 +4,7 @@
 \alias{aggregate_shap_variables}
 \title{Aggregate one-hot SHAP columns back to their original variables}
 \usage{
-aggregate_shap_variables(x, preprocessor)
+aggregate_shap_variables(x, preprocessor, orig_data = NULL)
 }
 \arguments{
 \item{x}{A \code{shapviz} or \code{mshapviz} object whose columns come from the
@@ -12,6 +12,12 @@ encoding of \code{preprocessor}.}
 
 \item{preprocessor}{A fitted preprocessor as stored in \code{result$preprocess},
 or \code{NULL} to return \code{x} unchanged.}
+
+\item{orig_data}{Optional data frame of the original, unprocessed variables
+with one row per explained observation in the same order. When supplied,
+the rebuilt feature values are exactly the observed patient values;
+imputation, scaling, encoding, and log transforms are not reflected in the
+display. Rows are matched by position with the explained data.}
 }
 \value{
 A \code{shapviz}/\code{mshapviz} object with one column per original variable.

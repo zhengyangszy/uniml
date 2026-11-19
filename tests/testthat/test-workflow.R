@@ -476,6 +476,14 @@ test_that("SHAP waterfall plot follows explain settings", {
   expect_true("waterfall" %in% names(result$plots))
   expect_s3_class(result$plots$waterfall, "ggplot")
   expect_equal(nrow(result$meta$failures), 0L)
+
+  # The plot-facing copy stores the observed patient values, not the
+  # standardized model inputs.
+  raw_values <- shapviz::get_feature_values(result$shap$objects_raw)
+  expect_true(all(raw_values$x1 %in% split$train$x1))
+  std_values <- shapviz::get_feature_values(result$shap$objects)
+  expect_false(isTRUE(all.equal(sort(std_values$x1), sort(raw_values$x1))))
+  expect_identical(attr(raw_values$cat, "uniml_levels"), c("a", "b"))
 })
 
 test_that("glmnet falls back to logistic regression with a single feature", {

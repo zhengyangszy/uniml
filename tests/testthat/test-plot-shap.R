@@ -70,6 +70,33 @@ test_that("SHAP plotting handles mshapviz objects and model selection", {
   expect_error(plot_shap_importance(result, model = "xgb"), "Unknown SHAP model")
 })
 
+test_that("SHAP plots prefer the original-unit copy of the features", {
+  skip_if_not_installed("shapviz")
+  S <- shapviz::get_shap_values(make_shapviz_fixture())
+  x_raw <- data.frame(
+    x1 = c(1, 2, 3, 4, 5, 6),
+    x2 = c(0, 1, 0, 1, 0, 1),
+    x3 = c(2, 4, 6, 8, 10, 12)
+  )
+  x_std <- x_raw
+  x_std$x1 <- as.numeric(scale(x_raw$x1))
+  x_std$x3 <- as.numeric(scale(x_raw$x3))
+  result <- make_shap_result()
+  result$shap$objects <- shapviz::shapviz(S, X = x_std)
+  result$shap$objects_raw <- shapviz::shapviz(S, X = x_raw)
+
+  dependence <- plot_shap_dependence(result, feature = "x1", jitter_width = 0)
+  built <- ggplot2::ggplot_build(dependence)
+  expect_equal(range(built$data[[1]]$x), range(x_raw$x1))
+
+  # Without the raw copy the standardized values are shown.
+  result$shap$objects_raw <- NULL
+  built_std <- ggplot2::ggplot_build(plot_shap_dependence(
+    result, feature = "x1", jitter_width = 0
+  ))
+  expect_equal(range(built_std$data[[1]]$x), range(x_std$x1))
+})
+
 test_that("SHAP plotting reports missing or unsupported objects", {
   result <- assemble_result(data_info = list(n = 1L))
   expect_error(plot_shap_importance(result), "No SHAP objects")

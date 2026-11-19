@@ -74,6 +74,11 @@ A \code{ggplot} or \code{patchwork} object.
 Draws the standard SHAP waterfall for one observation through
 \code{shapviz::sv_waterfall()}.
 }
+\details{
+Feature values are displayed in their original units: the plots prefer the
+original-unit copy the workflow stores in \code{result$shap$objects_raw}. Pass
+\code{result$shap$objects} itself as \code{x} to display standardized values instead.
+}
 \examples{
 \dontrun{
 plot_shap_waterfall(result, row_id = 1)

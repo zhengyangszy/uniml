@@ -2379,6 +2379,36 @@ run_workflow <- function(spec, train, validation, test = NULL,
     comparison_set
   )
 
+  # Baseline comparability: the Table 1 external-validation papers report
+  # first. Computed on the raw (pre-preprocessing) data, because one-hot
+  # columns and z-scores are not what a reader compares cohorts with.
+  baseline_parts <- list()
+  if (!is.null(test)) {
+    baseline_parts$test <- tryCatch(
+      baseline_table(train, test, spec = spec),
+      error = function(e) NULL
+    )
+  }
+  if (!is.null(external)) {
+    baseline_parts$external <- tryCatch(
+      baseline_table(train, external, spec = spec),
+      error = function(e) NULL
+    )
+  }
+  baseline <- if (length(baseline_parts) == 0L) {
+    NULL
+  } else {
+    out <- do.call(rbind, lapply(names(baseline_parts), function(set) {
+      part <- baseline_parts[[set]]
+      if (is.null(part)) {
+        return(NULL)
+      }
+      data.frame(set = set, part, stringsAsFactors = FALSE)
+    }))
+    rownames(out) <- NULL
+    out
+  }
+
   result <- assemble_result(
     data_info = list(
       task_type = spec$task_type,
@@ -2413,7 +2443,8 @@ run_workflow <- function(spec, train, validation, test = NULL,
       seed = as.integer(spec$seed),
       ci_R = as.integer(ci_R),
       calibration_fit = spec$evaluation$calibration_args$fit,
-      resampling = cv$resampling
+      resampling = cv$resampling,
+      baseline = baseline
     ),
     select_on = comparison_set,
     best_model_metric = spec$best_model_metric

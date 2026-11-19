@@ -968,7 +968,10 @@ export_results <- function(result, dir = "output", include_plots = TRUE,
       "zero_crossings.csv" = result$thresholds$zero_crossings,
       "paper_ready_thresholds.csv" = result$thresholds$paper_ready
     ),
-    meta = list("failures.csv" = result$meta$failures),
+    meta = list(
+      "failures.csv" = result$meta$failures,
+      "baseline_table.csv" = result$meta$baseline
+    ),
     reporting = list("tripod_ai.csv" = as.data.frame(tripod_ai_check(result))),
     shap = .shap_export(result$shap)
   )

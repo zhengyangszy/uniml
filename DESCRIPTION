@@ -1,7 +1,7 @@
 Package: uniml
 Type: Package
 Title: Unified Predictive Modeling Toolkit
-Version: 0.5.2
+Version: 0.6.0
 Authors@R: person("Steve", "Shi", email = "19943405117@163.com", role =
         c("aut", "cre"))
 Author: Steve Shi [aut, cre]
@@ -29,8 +29,8 @@ Imports: mlr3, mlr3learners, mlr3pipelines, mlr3filters, mlr3fselect,
 Suggests: mlr3mbo (>= 1.0.0), DiceKriging, rgenoud, missRanger,
         missForest, xgboost, e1071, kknn, nnet, rpart, PRROC,
         ResourceSelection, dcurves, smotefamily, ROSE, correlation,
-        car, ggsci, patchwork, igraph, ggraph, ggpubr, haven, testthat
-        (>= 3.0.0), knitr, rmarkdown
+        car, ggsci, patchwork, igraph, ggraph, ggpubr, haven,
+        FSelectorRcpp, testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 VignetteBuilder: knitr

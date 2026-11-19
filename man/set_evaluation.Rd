@@ -18,6 +18,7 @@ set_evaluation(
   tests = c("delong", "hl"),
   dca = TRUE,
   select_on = "validation",
+  resampling = NULL,
   ...
 )
 }
@@ -48,6 +49,10 @@ set_evaluation(
 \item{dca}{Whether to calculate decision-curve analysis.}
 
 \item{select_on}{Data set used for model comparison.}
+
+\item{resampling}{Outer resampling scheme: \code{"cv"} (default) or \code{"bootstrap"}
+(out-of-bag scoring; \code{folds} is reinterpreted as the number of bootstrap
+repetitions).}
 
 \item{...}{Additional evaluation fields.}
 }

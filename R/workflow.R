@@ -91,6 +91,7 @@
     scale = preprocess$scale,
     encode = preprocess$encode,
     balance = preprocess$balance,
+    transform = preprocess$transform,
     m = preprocess$m,
     outcome = spec$outcome,
     vars = preprocess$vars,
@@ -102,6 +103,7 @@
     impute = preprocess$impute_args,
     scale = preprocess$scale_args,
     encode = preprocess$encode_args,
+    transform = preprocess$transform_args,
     balance = preprocess$balance_args
   )
   for (step in names(extra)) {
@@ -141,6 +143,17 @@
   current <- completed
   impute_step <- full_preprocessor$steps$impute
   impute_step$params$imputation_index <- as.integer(imputation)
+  # The transform step rides along on every completed imputation: its
+  # decision (which columns to transform) was made on the full training data
+  # and stays identical across imputations, only the values differ.
+  transform_step <- fit_transform(
+    current,
+    method = full_preprocessor$steps$transform$method,
+    threshold = full_preprocessor$steps$transform$params$threshold,
+    outcome = spec$outcome,
+    verbose = spec$verbose
+  )
+  current <- apply_transform(transform_step, current)
   scale_step <- fit_scale(
     current,
     method = full_preprocessor$steps$scale$method,
@@ -171,6 +184,7 @@
   current <- balance_step$data
   preprocessor <- .new_preprocessor(list(
     impute = impute_step,
+    transform = transform_step,
     scale = scale_step,
     encode = encode_step,
     balance = balance_step
@@ -385,7 +399,7 @@
 
 .workflow_preprocessing_in_cv <- function(spec) {
   any(vapply(
-    c("imputation", "scaling", "encoding", "balance"),
+    c("imputation", "transform", "scaling", "encoding", "balance"),
     function(step) .workflow_in_cv(spec, step),
     logical(1)
   ))
@@ -438,6 +452,20 @@
   current <- apply_imputer(impute, current)
   steps$impute <- impute
 
+  transform <- if (.workflow_in_cv(spec, "transform")) {
+    fit_transform(
+      current,
+      method = full_preprocessor$steps$transform$method,
+      threshold = full_preprocessor$steps$transform$params$threshold,
+      outcome = spec$outcome,
+      verbose = spec$verbose
+    )
+  } else {
+    full_preprocessor$steps$transform
+  }
+  current <- apply_transform(transform, current)
+  steps$transform <- transform
+
   scale <- if (.workflow_in_cv(spec, "scaling")) {
     fit_scale(
       current,
@@ -458,7 +486,8 @@
       method = full_preprocessor$steps$encode$method,
       outcome = spec$outcome,
       ordered_as = spec$ordered_as,
-      verbose = spec$verbose
+      verbose = spec$verbose,
+      smooth = spec$preprocess$encode_args$smooth %||% 10
     )
   } else {
     full_preprocessor$steps$encode
@@ -1289,7 +1318,13 @@
 .workflow_folds <- function(data, spec) {
   folds <- max(2L, as.integer(spec$tuning$folds))
   repeats <- max(1L, as.integer(spec$tuning$repeats))
-  resampling <- if (repeats > 1L) {
+  chosen <- spec$evaluation$resampling %||% "cv"
+  resampling <- if (identical(chosen, "bootstrap")) {
+    # Out-of-bag scoring: every resample is a bootstrap draw, patients left
+    # out of it are the evaluation set. `folds` is reinterpreted as the number
+    # of bootstrap repetitions.
+    mlr3::rsmp("bootstrap", repeats = max(folds, 5L))
+  } else if (repeats > 1L) {
     mlr3::rsmp("repeated_cv", folds = folds, repeats = repeats)
   } else {
     mlr3::rsmp("cv", folds = folds)

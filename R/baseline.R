@@ -64,7 +64,7 @@
 
 #' Baseline comparability table (Table 1 with standardised mean differences)
 #'
-#' Compares two cohorts feature by feature — the table external-validation
+#' Compares two cohorts feature by feature - the table external-validation
 #' papers report before anything else, to show that the new cohort is the same
 #' kind of population. Numeric variables are summarised as mean (sd),
 #' categorical variables as n (%) per level, and every row carries the

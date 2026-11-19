@@ -2,7 +2,7 @@
 #
 # Permutation feature importance answers the same "which feature matters"
 # question as SHAP with a completely different mechanism: shuffle one column,
-# watch the score drop. The two disagreeing is itself informative — SHAP
+# watch the score drop. The two disagreeing is itself informative - SHAP
 # attributes credit under a cooperative-game model, PFI measures what the
 # model actually uses on this data. The tutorial literature recommends
 # reporting both.
@@ -37,7 +37,7 @@
     observed <- match(as.character(truth), labels)
     classes <- colnames(prob)
     squared <- (prob[, classes, drop = FALSE] -
-                  model.matrix(~ 0 + factor(observed)))^2
+                  stats::model.matrix(~ 0 + factor(observed)))^2
     list(score = mean(rowSums(squared)), higher_is_better = FALSE)
   }
 }
@@ -46,7 +46,7 @@
 #'
 #' Shuffles one feature at a time in `newdata` and measures how much the
 #' model's score changes, averaged over `B` shuffles. Answers "what does this
-#' model actually use on this data" — the mechanistic counterpart to
+#' model actually use on this data" - the mechanistic counterpart to
 #' [explain_shap()], and the two are worth reporting side by side.
 #'
 #' The model's own preprocessing, calibration, and deployment threshold are

@@ -4,7 +4,7 @@
 # steps. They also carry the reusable preprocessing container built by
 # `fit_preprocessor()` and consumed by `apply_preprocessor()`.
 
-.preprocess_order <- c("impute", "scale", "encode", "balance")
+.preprocess_order <- c("impute", "transform", "scale", "encode", "balance")
 
 .empty_preprocessor <- function() {
   structure(
@@ -250,7 +250,12 @@ validate_uniml_preprocessor <- function(x) {
   if (!inherits(x, "uniml_preprocessor")) {
     .abort("`x` must be a `uniml_preprocessor` object.")
   }
-  if (!is.character(x$order) || !identical(x$order, .preprocess_order)) {
+  # Results saved by older versions (before the transform step existed) carry
+  # the four-step order; `read_result()` promises they keep working.
+  legacy_order <- setdiff(.preprocess_order, "transform")
+  orders_ok <- identical(x$order, .preprocess_order) ||
+    identical(x$order, legacy_order)
+  if (!is.character(x$order) || !orders_ok) {
     .abort("`order` must list the preprocessing steps in supported order.")
   }
   if (!is.list(x$steps)) {
@@ -311,6 +316,9 @@ print.uniml_preprocessor <- function(x, ...) {
 #' @param ordered_as Ordered-factor handling.
 #' @param max_iter Iterations passed to `mice`.
 #' @param seed Random seed.
+#' @param transform Skewness transform applied before scaling: `"log1p"` or
+#'   `"none"`.
+#' @param transform_threshold Skewness above which a column is transformed.
 #' @param verbose Verbosity level.
 #'
 #' @return A fitted `uniml_preprocessor` object.
@@ -321,7 +329,8 @@ fit_preprocessor <- function(data, spec = NULL, impute = NULL, scale = NULL,
                              encode = NULL, balance = NULL, m = NULL, p = 0.5,
                              n_neighbors = 5L, dup_size = 0, vars = NULL,
                              outcome = NULL, ordered_as = NULL, max_iter = 5,
-                             seed = 123, verbose = 1) {
+                             seed = 123, verbose = 1, transform = NULL,
+                             transform_threshold = 1) {
   .require_prep_input(data, "data")
   if (!is.null(spec)) {
     validate_uniml_spec(spec)
@@ -348,6 +357,21 @@ fit_preprocessor <- function(data, spec = NULL, impute = NULL, scale = NULL,
     if (is.null(balance)) if (is.null(spec)) "none" else spec$preprocess$balance else balance,
     "balance"
   )
+  transform <- .norm_method(
+    if (is.null(transform)) {
+      if (is.null(spec)) "none" else spec$preprocess$transform %||% "none"
+    } else {
+      transform
+    },
+    "transform"
+  )
+  transform_threshold <- if (is.null(spec)) {
+    transform_threshold
+  } else if (is.null(spec$preprocess$transform_args$threshold)) {
+    transform_threshold
+  } else {
+    spec$preprocess$transform_args$threshold
+  }
   m <- if (is.null(m)) if (is.null(spec)) 5L else spec$preprocess$m else m
   seed <- if (is.null(seed)) if (is.null(spec)) 123L else spec$seed else seed
   verbose <- if (is.null(verbose)) if (is.null(spec)) 1L else spec$verbose else verbose
@@ -362,6 +386,12 @@ fit_preprocessor <- function(data, spec = NULL, impute = NULL, scale = NULL,
     m = m, max_iter = max_iter, seed = seed, verbose = verbose
   )
   scaled <- apply_imputer(impute_step, raw)
+
+  transform_step <- fit_transform(
+    scaled, method = transform, threshold = transform_threshold,
+    outcome = outcome_name, verbose = verbose
+  )
+  scaled <- apply_transform(transform_step, scaled)
 
   scale_step <- fit_scale(
     scaled, method = scale, vars = vars, outcome = outcome_name,
@@ -386,6 +416,7 @@ fit_preprocessor <- function(data, spec = NULL, impute = NULL, scale = NULL,
 
   preprocessor <- .new_preprocessor(list(
     impute = impute_step,
+    transform = transform_step,
     scale = scale_step,
     encode = encode_step,
     balance = balance_step
@@ -403,6 +434,7 @@ fit_preprocessor <- function(data, spec = NULL, impute = NULL, scale = NULL,
   switch(
     kind,
     impute = "apply_imputer",
+    transform = "apply_transform",
     scale = "apply_scale",
     encode = "apply_encode",
     balance = "apply_balance"

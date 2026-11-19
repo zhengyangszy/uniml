@@ -21,7 +21,7 @@ A data frame with \code{variable}, \code{level}, \code{reference_stat},
 \code{comparison_stat}, and \code{smd}.
 }
 \description{
-Compares two cohorts feature by feature — the table external-validation
+Compares two cohorts feature by feature - the table external-validation
 papers report before anything else, to show that the new cohort is the same
 kind of population. Numeric variables are summarised as mean (sd),
 categorical variables as n (\%) per level, and every row carries the

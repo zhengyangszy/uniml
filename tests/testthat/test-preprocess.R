@@ -53,7 +53,7 @@ test_that("fit_preprocessor() imputes, scales, encodes, and balances in order", 
   )
   expect_s3_class(pre, "uniml_preprocessor")
   expect_true(validate_uniml_preprocessor(pre))
-  expect_identical(pre$order, c("impute", "scale", "encode", "balance"))
+  expect_identical(pre$order, c("impute", "transform", "scale", "encode", "balance"))
   expect_identical(pre$steps$impute$method, "median_mode")
   expect_identical(pre$steps$scale$method, "zscore")
   expect_identical(pre$steps$encode$method, "onehot")

@@ -1,7 +1,91 @@
-# uniml 0.5.2
+# uniml 0.6.0
 
-Two reporting improvements suggested while using the package end to end. No
-estimation procedure changed.
+The features a clinical mlr3 tutorial checks for, added on top of the two
+reporting fixes that were prepared as 0.5.2. No estimation procedure changed
+unless a new feature says so.
+
+## Nomogram for logistic-regression models
+
+* New `nomogram_table()` and `plot_nomogram()` turn a fitted `lr`/`log_reg`
+  model into the classical clinical figure: one scale per variable (numeric
+  variables in their original units, categorical variables relative to their
+  reference level), a total-points scale, and the probability that scale maps
+  to. Variables shrunk to zero by the LASSO simply do not appear. Random
+  forests and multiclass outcomes are refused with a message — a nomogram
+  reads coefficients, and those models have none.
+
+## Baseline comparability table
+
+* New `baseline_table()` builds the Table 1 that external-validation papers
+  report first: mean (sd) or n (%) per feature against a reference cohort,
+  with the standardised mean difference. SMD is reported and p-values
+  deliberately are not — with a few hundred patients a p-value flags trivial
+  differences, while `|SMD| > 0.1` is the conventional line.
+* `run_workflow()` computes it automatically for `test` and `external` on the
+  raw data and stores it in `result$meta$baseline`; it is exported as
+  `meta/baseline_table.csv`.
+
+## Permutation feature importance
+
+* New `pfi_uniml()` shuffles one feature at a time and measures the score
+  change, averaged over `B` permutations; every permutation goes through the
+  model's full deployment pipeline via `predict_uniml()`. Binary results are
+  scored with the AUC, multiclass results with the Brier score. New
+  `plot_pfi()` draws the bars with across-permutation standard deviations.
+
+## Partial dependence and ICE curves
+
+* New `pd_ice()` sweeps one feature over its observed quantiles and records
+  the prediction for the average patient (PD) and for every patient
+  separately (ICE); `plot_pd_ice()` draws both, because a flat PD curve can
+  hide patients that swing. Categorical features are swept over their levels.
+
+## Feature selection through the mlr3 ecosystem
+
+* Five new selectors wrap `mlr3filters`: `select_information_gain()`,
+  `select_jmim()`, `select_permutation()` (Breiman's original importance),
+  `select_auc_filter()` (binary only), and `select_correlation()` (computed
+  directly, because `mlr3filters`'s correlation filter needs a numeric
+  target). All keep the top `k` features, by default about the square root of
+  the feature count.
+* New `select_sequential()` exposes forward and backward wrapper selection
+  through `mlr3fselect`'s sequential fselector.
+* The `information_gain` and `jmim` filters use `FSelectorRcpp`, and `jmim`
+  additionally `praznik` — both are suggested dependencies.
+
+## Impact encoding and a skewness transform
+
+* `set_preprocess(encode = "impact")` fits an m-estimate target encoding:
+  each level's positive rate shrunk toward the prior, levels unseen in
+  training falling back to the prior. Binary outcomes only, and the
+  cross-validation machinery refits the encoder inside folds when the
+  leakage policy asks for it.
+* `set_preprocess(transform = "log1p")` applies `log1p` to numeric columns
+  whose sample skewness exceeds a threshold (default 1) and that have no
+  negative values. Which columns were transformed is recorded in the step.
+
+## Counterfactuals, bootstrap resampling, and the micro ROC
+
+* New `counterfactuals()` performs an exhaustive single-feature what-if
+  search: the smallest change in the observed values that moves the predicted
+  probability across a target, through the full deployment pipeline.
+  Multi-feature changes need an optimiser and are out of scope; the
+  `counterfactuals` package is the reference for that.
+* `set_evaluation(resampling = "bootstrap")` switches the outer resampling
+  from cross-validation to out-of-bag bootstrap (`folds` is reinterpreted as
+  the number of bootstrap repetitions).
+* The multiclass ROC figure already drew the micro-average curve when
+  `micro = TRUE` (the default); this is now documented next to the
+  Hand-Till and one-vs-rest numbers rather than treated as missing.
+
+## Backward compatibility
+
+* Results saved with `save_result()` by versions before the transform step
+  existed keep working through `read_result()`: the preprocessor validation
+  accepts the legacy four-step order, and `apply_preprocessor()` skips the
+  transform it does not contain.
+
+## Reporting fixes prepared as 0.5.2
 
 ## SHAP figures report variables, not one-hot columns
 

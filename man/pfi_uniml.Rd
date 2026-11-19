@@ -29,7 +29,7 @@ data), \code{permuted} (the mean score under permutation), \code{importance}, an
 \description{
 Shuffles one feature at a time in \code{newdata} and measures how much the
 model's score changes, averaged over \code{B} shuffles. Answers "what does this
-model actually use on this data" — the mechanistic counterpart to
+model actually use on this data" - the mechanistic counterpart to
 \code{\link[=explain_shap]{explain_shap()}}, and the two are worth reporting side by side.
 }
 \details{
@@ -52,6 +52,6 @@ useful: learning a variable's importance by computing an output sensitivity
 to the rest of the model over holdout data. \emph{Journal of Machine Learning
 Research}, 20(81), 1-51.
 
-Bischl B, Sonabend R, Kotthoff L, Lang M (2024). \emph{Applied Machine Learning
-Using mlr3 in R}. CRC Press. doi:10.1201/9781032485218
+Bischl B, Sonabend R, Kotthoff L, Lang M (2023). \emph{Applied Machine Learning
+Using mlr3 in R}. CRC Press. doi:10.1201/9781003402848
 }

@@ -29,7 +29,7 @@ A \code{ggplot} object.
 \description{
 Draws the classical nomogram: one scale per variable, total points, and the
 probability that scale maps to. Only binary logistic-regression models are
-supported — see \code{\link[=nomogram_table]{nomogram_table()}} for the same content as data.
+supported - see \code{\link[=nomogram_table]{nomogram_table()}} for the same content as data.
 }
 \examples{
 \dontrun{

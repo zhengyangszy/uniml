@@ -6,11 +6,12 @@
 \usage{
 fit_encode(
   data,
-  method = c("onehot", "onehot_drop", "none"),
+  method = c("onehot", "onehot_drop", "impact", "none"),
   outcome = NULL,
   ordered_as = c("ordinal", "numeric"),
   max_levels = 50L,
-  verbose = 1
+  verbose = 1,
+  smooth = 10
 )
 }
 \arguments{
@@ -25,6 +26,10 @@ fit_encode(
 \item{max_levels}{Maximum levels allowed before a high-cardinality warning.}
 
 \item{verbose}{Verbosity level.}
+
+\item{smooth}{Smoothing weight for impact encoding: a level's positive rate
+is shrunk toward the prior with this weight, so rare levels do not get
+wild estimates.}
 }
 \value{
 A fitted \code{uniml_step_encode} step.

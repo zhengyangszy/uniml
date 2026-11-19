@@ -89,7 +89,8 @@
     step,
     impute = c("m", "max_iter", "seed"),
     scale = c("vars"),
-    encode = c("max_levels"),
+    encode = c("max_levels", "smooth"),
+    transform = c("threshold"),
     balance = c("p", "n_neighbors", "dup_size", "seed"),
     .abort(sprintf("Unknown preprocessing step \"%s\".", step))
   )
@@ -452,7 +453,8 @@ validate_uniml_spec <- function(x) {
                                        "missForest", "none"))
   .assert_scalar_number(x$preprocess$m, "preprocess$m", integer = TRUE, min = 1)
   .assert_choice(x$preprocess$scale, "preprocess$scale", c("zscore", "minmax", "none"))
-  .assert_choice(x$preprocess$encode, "preprocess$encode", c("onehot", "onehot_drop", "none"))
+  .assert_choice(x$preprocess$encode, "preprocess$encode",
+                 c("onehot", "onehot_drop", "impact", "none"))
   .assert_choice(x$preprocess$balance, "preprocess$balance", c("none", "rose", "smote", "both"))
   .assert_step_args(x$preprocess$impute_args, .allowed_step_args("impute"),
                     "preprocess$impute_args")
@@ -468,7 +470,9 @@ validate_uniml_spec <- function(x) {
     "selection$methods",
     choices = c(
       "univariate", "logistic", "single", "lasso", "boruta", "rf",
-      "rf_importance", "importance", "rfe", "multivariate", "none"
+      "rf_importance", "importance", "rfe", "multivariate", "none",
+      "correlation", "information_gain", "jmim", "permutation", "auc",
+      "sequential"
     )
   )
   .assert_choice(x$selection$lambda, "selection$lambda", c("1se", "min"))
@@ -503,7 +507,9 @@ validate_uniml_spec <- function(x) {
   if (length(x$selection$args) > 0L) {
     unknown_methods <- setdiff(
       names(x$selection$args),
-      c("univariate", "lasso", "boruta", "rf_importance", "rfe", "multivariate")
+      c("univariate", "lasso", "boruta", "rf_importance", "rfe", "multivariate",
+        "correlation", "information_gain", "jmim", "permutation", "auc",
+        "sequential")
     )
     if (length(unknown_methods) > 0L) {
       .abort(sprintf(
@@ -1250,6 +1256,10 @@ print.summary.uniml_result <- function(x, ...) {
 #' @param impute_args Named list forwarded to [fit_imputer()].
 #' @param scale_args Named list forwarded to [fit_scale()].
 #' @param encode_args Named list forwarded to [fit_encode()].
+#' @param transform Skewness transform applied before scaling: `"log1p"` or
+#'   `"none"` (default).
+#' @param transform_args Named list forwarded to [fit_transform()]; its
+#'   `threshold` is the skewness above which a column is transformed.
 #' @param balance_args Named list forwarded to [fit_balance()].
 #' @param ... Additional preprocessing fields.
 #'
@@ -1266,9 +1276,9 @@ print.summary.uniml_result <- function(x, ...) {
 #' @export
 set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode = NULL,
                            ordered_as = NULL, outcome_na_action = NULL, balance = NULL,
-                           vars = NULL,
+                           vars = NULL, transform = NULL,
                            impute_args = NULL, scale_args = NULL, encode_args = NULL,
-                           balance_args = NULL, ...) {
+                           transform_args = NULL, balance_args = NULL, ...) {
   .validate_spec_object(spec)
   if (!is.null(vars)) {
     .assert_character_vector(vars, "vars")
@@ -1276,7 +1286,12 @@ set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode =
   .assert_step_args(impute_args, .allowed_step_args("impute"), "impute_args")
   .assert_step_args(scale_args, .allowed_step_args("scale"), "scale_args")
   .assert_step_args(encode_args, .allowed_step_args("encode"), "encode_args")
+  .assert_step_args(transform_args, .allowed_step_args("transform"),
+                    "transform_args")
   .assert_step_args(balance_args, .allowed_step_args("balance"), "balance_args")
+  if (!is.null(transform)) {
+    .assert_choice(transform, "transform", c("none", "log1p"))
+  }
   values <- list(
     impute = impute,
     m = m,
@@ -1286,9 +1301,11 @@ set_preprocess <- function(spec, impute = NULL, m = NULL, scale = NULL, encode =
     outcome_na_action = outcome_na_action,
     balance = balance,
     vars = vars,
+    transform = transform,
     impute_args = impute_args,
     scale_args = scale_args,
     encode_args = encode_args,
+    transform_args = transform_args,
     balance_args = balance_args
   )
   values <- values[!vapply(values, is.null, logical(1))]
@@ -1533,6 +1550,9 @@ set_tuning <- function(spec, tuner = "random_search", folds = 5, repeats = 1,
 #' @param tests Post-model statistical tests.
 #' @param dca Whether to calculate decision-curve analysis.
 #' @param select_on Data set used for model comparison.
+#' @param resampling Outer resampling scheme: `"cv"` (default) or `"bootstrap"`
+#'   (out-of-bag scoring; `folds` is reinterpreted as the number of bootstrap
+#'   repetitions).
 #' @param ... Additional evaluation fields.
 #'
 #' @return Updated `uniml_spec`.
@@ -1551,13 +1571,17 @@ set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
                            fixed_threshold = NULL, reference_model = NULL,
                            best_model = "composite", calibration = "none",
                            calibration_args = NULL, tests = c("delong", "hl"),
-                           dca = TRUE, select_on = "validation", ...) {
+                           dca = TRUE, select_on = "validation",
+                           resampling = NULL, ...) {
   .validate_spec_object(spec)
   .assert_step_args(
     calibration_args,
     .allowed_calibration_args(),
     "calibration_args"
   )
+  if (!is.null(resampling)) {
+    .assert_choice(resampling, "resampling", c("cv", "bootstrap"))
+  }
   if (!is.null(calibration_args)) {
     existing <- spec$evaluation$calibration_args
     if (is.null(existing)) {
@@ -1578,7 +1602,8 @@ set_evaluation <- function(spec, metrics = "all", ci = "bootstrap",
     calibration_args = calibration_args,
     tests = tests,
     dca = dca,
-    select_on = select_on
+    select_on = select_on,
+    resampling = resampling
   )
   values <- values[!vapply(values, is.null, logical(1))]
   spec$evaluation <- .merge_named_list(spec$evaluation, values)

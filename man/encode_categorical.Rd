@@ -6,7 +6,7 @@
 \usage{
 encode_categorical(
   data,
-  method = c("onehot", "onehot_drop", "none"),
+  method = c("onehot", "onehot_drop", "impact", "none"),
   outcome = NULL,
   ...
 )

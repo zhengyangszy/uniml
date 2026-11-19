@@ -3,7 +3,7 @@
 # A nomogram turns a linear model into the paper figure every clinical cohort
 # knows: one scale per variable, a total-points scale, and the probability that
 # scale maps to. It is only defined for linear models on the logit (logistic
-# regression) scale — a random forest has no coefficients to read off, and a
+# regression) scale - a random forest has no coefficients to read off, and a
 # multiclass outcome has no single logit. Those cases are refused with a
 # message that says which models work, never silently replaced.
 #
@@ -12,7 +12,7 @@
 # units through the scaling step (a linear re-parametrisation keeps every
 # coefficient exact), and one-hot columns are mapped back to their variable
 # through the encoder map. Zero coefficients (LASSO shrank them away) simply
-# do not appear — that is the model being honest about what it uses.
+# do not appear - that is the model being honest about what it uses.
 
 .nomogram_supported <- function(result, model) {
   key <- if (identical(model, "best")) {
@@ -188,7 +188,7 @@ nomogram_table <- function(result, model = "best") {
       # (the first level), the way published nomograms read: the reference
       # contributes 0 points, other levels contribute the difference. With
       # full-level encoding the raw coefficients are split across redundant
-      # columns, so differences — not raw coefficients — are the meaningful,
+      # columns, so differences - not raw coefficients - are the meaningful,
       # sample-invariant quantity.
       reference_column <- paste0(variable, "_", encoder_levels[[variable]][[1L]])
       reference <- if (reference_column %in% encoded) {
@@ -236,7 +236,7 @@ nomogram_table <- function(result, model = "best") {
 #'
 #' Draws the classical nomogram: one scale per variable, total points, and the
 #' probability that scale maps to. Only binary logistic-regression models are
-#' supported — see [nomogram_table()] for the same content as data.
+#' supported - see [nomogram_table()] for the same content as data.
 #'
 #' @param result A binary `uniml_result` from [run_workflow()].
 #' @param model A model key, or `"best"`.
@@ -379,7 +379,7 @@ plot_nomogram <- function(result, model = "best", palette = "bmj",
       x = "Points",
       y = NULL,
       title = if (is.null(title)) {
-        sprintf("Nomogram — model \"%s\"", table$model)
+        sprintf("Nomogram - model \"%s\"", table$model)
       } else {
         title
       }

@@ -274,6 +274,13 @@
       importance = "rf_importance",
       rfe = "rfe",
       multivariate = "multivariate",
+      correlation = "correlation",
+      information_gain = "information_gain",
+      ig = "information_gain",
+      jmim = "jmim",
+      permutation = "permutation",
+      auc = "auc",
+      sequential = "sequential",
       none = "none",
       .abort(sprintf("Unsupported feature-selection method: \"%s\".", method))
     )
@@ -1040,6 +1047,25 @@ select_features <- function(data, spec) {
       multivariate = {
         arguments$method <- selection$multivariate
         arguments$p_threshold <- selection$p_threshold
+      },
+      correlation = {
+        arguments$k <- selection$k
+      },
+      information_gain = {
+        arguments$k <- selection$k
+      },
+      jmim = {
+        arguments$k <- selection$k
+      },
+      permutation = {
+        arguments$k <- selection$k
+        arguments$seed <- spec$seed
+      },
+      auc = {
+        arguments$k <- selection$k
+      },
+      sequential = {
+        arguments$seed <- spec$seed
       }
     )
     extra <- extra_args[[method]]
@@ -1055,7 +1081,13 @@ select_features <- function(data, spec) {
         boruta = select_boruta,
         rf_importance = select_rf_importance,
         rfe = select_rfe,
-        multivariate = select_multivariate
+        multivariate = select_multivariate,
+        correlation = select_correlation,
+        information_gain = select_information_gain,
+        jmim = select_jmim,
+        permutation = select_permutation,
+        auc = select_auc_filter,
+        sequential = select_sequential
       ),
       arguments
     )

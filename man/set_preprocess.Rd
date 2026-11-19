@@ -14,9 +14,11 @@ set_preprocess(
   outcome_na_action = NULL,
   balance = NULL,
   vars = NULL,
+  transform = NULL,
   impute_args = NULL,
   scale_args = NULL,
   encode_args = NULL,
+  transform_args = NULL,
   balance_args = NULL,
   ...
 )
@@ -43,11 +45,17 @@ transform. Columns outside it are passed through untouched, which is how a
 task type keeps its own outcome columns (a survival time and status, for
 example) out of scaling and encoding.}
 
+\item{transform}{Skewness transform applied before scaling: \code{"log1p"} or
+\code{"none"} (default).}
+
 \item{impute_args}{Named list forwarded to \code{\link[=fit_imputer]{fit_imputer()}}.}
 
 \item{scale_args}{Named list forwarded to \code{\link[=fit_scale]{fit_scale()}}.}
 
 \item{encode_args}{Named list forwarded to \code{\link[=fit_encode]{fit_encode()}}.}
+
+\item{transform_args}{Named list forwarded to \code{\link[=fit_transform]{fit_transform()}}; its
+\code{threshold} is the skewness above which a column is transformed.}
 
 \item{balance_args}{Named list forwarded to \code{\link[=fit_balance]{fit_balance()}}.}
 

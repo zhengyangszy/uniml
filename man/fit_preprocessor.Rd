@@ -20,7 +20,9 @@ fit_preprocessor(
   ordered_as = NULL,
   max_iter = 5,
   seed = 123,
-  verbose = 1
+  verbose = 1,
+  transform = NULL,
+  transform_threshold = 1
 )
 }
 \arguments{
@@ -49,6 +51,11 @@ fit_preprocessor(
 \item{seed}{Random seed.}
 
 \item{verbose}{Verbosity level.}
+
+\item{transform}{Skewness transform applied before scaling: \code{"log1p"} or
+\code{"none"}.}
+
+\item{transform_threshold}{Skewness above which a column is transformed.}
 }
 \value{
 A fitted \code{uniml_preprocessor} object.

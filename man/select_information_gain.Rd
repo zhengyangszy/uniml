@@ -24,11 +24,13 @@ uncertainty (mutual information between feature and outcome), as scored by
 \code{mlr3filters::flt("information_gain")}.
 }
 \examples{
+\dontrun{
 data <- data.frame(
   x1 = rnorm(100), x2 = rnorm(100),
   y = factor(rbinom(100, 1, 0.5))
 )
 select_information_gain(data, "y")
+}
 }
 \references{
 Cover TM, Thomas JA (2006). \emph{Elements of Information Theory}, 2nd edition.

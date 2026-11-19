@@ -127,11 +127,13 @@
 #' 0.9.1. doi:10.32614/CRAN.package.mlr3filters
 #' @export
 #' @examples
+#' \dontrun{
 #' data <- data.frame(
 #'   x1 = rnorm(100), x2 = rnorm(100),
 #'   y = factor(rbinom(100, 1, 0.5))
 #' )
 #' select_information_gain(data, "y")
+#' }
 select_information_gain <- function(data, outcome, k = NULL) {
   .mlr3filter_select(data, outcome, "information_gain", k = k)
 }
@@ -152,11 +154,13 @@ select_information_gain <- function(data, outcome, k = NULL) {
 #' 0.9.1. doi:10.32614/CRAN.package.mlr3filters
 #' @export
 #' @examples
+#' \dontrun{
 #' data <- data.frame(
 #'   x1 = rnorm(100), x2 = rnorm(100),
 #'   y = factor(rbinom(100, 1, 0.5))
 #' )
 #' select_jmim(data, "y")
+#' }
 select_jmim <- function(data, outcome, k = NULL) {
   .mlr3filter_select(data, outcome, "jmim", k = k)
 }

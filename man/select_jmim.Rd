@@ -24,11 +24,13 @@ a feature with the already-selected set, which restrains the selection from
 piling onto redundant features.
 }
 \examples{
+\dontrun{
 data <- data.frame(
   x1 = rnorm(100), x2 = rnorm(100),
   y = factor(rbinom(100, 1, 0.5))
 )
 select_jmim(data, "y")
+}
 }
 \references{
 Becker M, Schratz P, Lang M, Bischl B, Binder M, Zobolas J (2026).

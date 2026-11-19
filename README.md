@@ -2,6 +2,7 @@
 
 **English** | [简体中文](https://github.com/zhengyangszy/uniml/blob/main/README.zh.md)
 
+[![CRAN status](https://www.r-pkg.org/badges/version/uniml)](https://CRAN.R-project.org/package=uniml)
 [![R-CMD-check](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml)
 
 `uniml` is a unified predictive modeling toolkit for binary and multiclass

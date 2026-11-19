@@ -2,6 +2,7 @@
 
 [English](https://github.com/zhengyangszy/uniml/blob/main/README.md) | **简体中文**
 
+[![CRAN status](https://www.r-pkg.org/badges/version/uniml)](https://CRAN.R-project.org/package=uniml)
 [![R-CMD-check](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/zhengyangszy/uniml/actions/workflows/R-CMD-check.yaml)
 
 `uniml` 是一个面向**二分类与多分类预测模型**的统一建模工具包。它把数据切分、缺失值

@@ -4,12 +4,17 @@
 \alias{make_task}
 \title{Build an mlr3 classification task}
 \usage{
-make_task(data, spec)
+make_task(data, spec, stratify = TRUE)
 }
 \arguments{
 \item{data}{A data frame or \code{uniml_data} object.}
 
 \item{spec}{A \code{uniml_spec} object.}
+
+\item{stratify}{Whether the task may receive the stratified-folds treatment
+from \code{set_evaluation(stratify = TRUE)}. Prediction paths that build a task
+only to score new data pass \code{FALSE}, so the resampling message never
+fires on outcome-less prediction frames.}
 }
 \value{
 An \code{mlr3::TaskClassif}.

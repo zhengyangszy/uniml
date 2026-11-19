@@ -2648,7 +2648,8 @@ predict_uniml <- function(object, newdata, model = "best", ...) {
     }
     task <- make_task(
       transformed[, c(features, spec$outcome), drop = FALSE],
-      spec
+      spec,
+      stratify = FALSE
     )
     predicted <- tryCatch(
       .workflow_probabilities(learners[[index]], task, spec$positive)$prob,

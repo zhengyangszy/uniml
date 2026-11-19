@@ -580,6 +580,10 @@ resolve_learners <- function(spec, task = NULL, n_train = NULL) {
 #'
 #' @param data A data frame or `uniml_data` object.
 #' @param spec A `uniml_spec` object.
+#' @param stratify Whether the task may receive the stratified-folds treatment
+#'   from `set_evaluation(stratify = TRUE)`. Prediction paths that build a task
+#'   only to score new data pass `FALSE`, so the resampling message never
+#'   fires on outcome-less prediction frames.
 #'
 #' @return An `mlr3::TaskClassif`.
 #' @export
@@ -590,7 +594,7 @@ resolve_learners <- function(spec, task = NULL, n_train = NULL) {
 #' )
 #' spec <- uniml_spec(task_type = "binary", outcome = "y", positive = "yes")
 #' make_task(data, spec)
-make_task <- function(data, spec) {
+make_task <- function(data, spec, stratify = TRUE) {
   validate_uniml_spec(spec)
   if (inherits(data, "TaskClassif")) {
     task <- data$clone(deep = TRUE)
@@ -602,7 +606,10 @@ make_task <- function(data, spec) {
     if (!identical(observed_positive, expected_positive)) {
       .abort("`spec$positive` does not match the positive class in `task`.")
     }
-    return(.stratify_task(task, spec, folds = spec$tuning$folds))
+    if (stratify) {
+      return(.stratify_task(task, spec, folds = spec$tuning$folds))
+    }
+    return(task)
   }
 
   if (inherits(data, "uniml_data")) {
@@ -644,7 +651,9 @@ make_task <- function(data, spec) {
     # mlr3 treat the outcome as binary.
     positive = if (is.null(spec$positive)) NULL else as.character(spec$positive)
   )
-  task <- .stratify_task(task, spec, folds = spec$tuning$folds)
+  if (stratify) {
+    task <- .stratify_task(task, spec, folds = spec$tuning$folds)
+  }
   task$id <- "uniml_task"
   task
 }
